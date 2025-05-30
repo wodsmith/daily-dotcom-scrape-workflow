@@ -1,75 +1,87 @@
 // <docs-tag name="full-workflow-example">
 import { WorkflowEntrypoint, WorkflowStep, WorkflowEvent } from 'cloudflare:workers';
+import { createLogger } from './utils/logger';
+import { generateWodUrl, fetchWodPage, extractWodDetails, type WodDetails } from './scraper/dotcom-scraper';
 
 type Env = {
 	// Add your bindings here, e.g. Workers KV, D1, Workers AI, etc.
-	MY_WORKFLOW: Workflow;
+	DAILY_SCRAPE_WORKFLOW: Workflow;
 };
 
 // User-defined params passed to your workflow
 type Params = {
-	email: string;
-	metadata: Record<string, string>;
+	date: string;
 };
 
 // <docs-tag name="workflow-entrypoint">
-export class MyWorkflow extends WorkflowEntrypoint<Env, Params> {
+export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 	async run(event: WorkflowEvent<Params>, step: WorkflowStep) {
 		// Can access bindings on `this.env`
 		// Can access params on `event.payload`
 
-		const files = await step.do('my first step', async () => {
-			// Fetch a list of files from $SOME_SERVICE
-			return {
-				inputParams: event,
-				files: [
-					'doc_7392_rev3.pdf',
-					'report_x29_final.pdf',
-					'memo_2024_05_12.pdf',
-					'file_089_update.pdf',
-					'proj_alpha_v2.pdf',
-					'data_analysis_q2.pdf',
-					'notes_meeting_52.pdf',
-					'summary_fy24_draft.pdf',
-				],
-			};
-		});
-
 		// You can optionally have a Workflow wait for additional data:
 		// human approval or an external webhook or HTTP request, before progressing.
 		// You can submit data via HTTP POST to /accounts/{account_id}/workflows/{workflow_name}/instances/{instance_id}/events/{eventName}
-		const waitForApproval = await step.waitForEvent('request-approval', {
-			type: 'approval', // define an optional key to switch on
-			timeout: '1 minute', // keep it short for the example!
+		// const waitForApproval = await step.waitForEvent('request-approval', {
+		// 	type: 'approval', // define an optional key to switch on
+		// 	timeout: '1 minute', // keep it short for the example!
+		// });
+
+		// await step.sleep('wait on something', '1 minute');
+
+		// await step.do(
+		// 	'make a call to write that could maybe, just might, fail',
+		// 	// Define a retry strategy
+		// 	{
+		// 		retries: {
+		// 			limit: 5,
+		// 			delay: '5 second',
+		// 			backoff: 'exponential',
+		// 		},
+		// 		timeout: '15 minutes',
+		// 	},
+		// 	async () => {
+		// 		// Do stuff here, with access to the state from our previous steps
+		// 		if (Math.random() > 0.5) {
+		// 			throw new Error('API call to $STORAGE_SYSTEM failed');
+		// 		}
+		// 	},
+		// );
+
+		const workflowId = event.instanceId;
+		const dateInput = event.payload.date;
+		const date = new Date(dateInput);
+		const wfLogger = createLogger(`Workflow:dailyScrapeWorkflow:${workflowId}`);
+
+		wfLogger.info(`Step: Generating URL for ${date.toISOString().split("T")[0]}.`);
+		const wodUrl = generateWodUrl(date);
+
+		wfLogger.info(`Step: Fetching page ${wodUrl}.`);
+		const htmlContent = await step.do("fetch-wod-page", async () => {
+			return fetchWodPage(wodUrl);
 		});
 
-		const apiResponse = await step.do('some other step', async () => {
-			let resp = await fetch('https://api.cloudflare.com/client/v4/ips');
-			return await resp.json<any>();
-		});
+		wfLogger.info("Step: Extracting WOD details.");
+		const wodDetails: WodDetails = extractWodDetails(htmlContent);
 
-		await step.sleep('wait on something', '1 minute');
+		if (wodDetails.isRestDay) {
+			wfLogger.info("Step: Today is a rest day on CrossFit.com.");
+		} else if (wodDetails.wodText) {
+			wfLogger.info(
+				`Step: Successfully scraped WOD: ${wodDetails.wodText}...`,
+			);
+		} else {
+			wfLogger.warn("Step: Could not scrape WOD details.");
+		}
 
-		await step.do(
-			'make a call to write that could maybe, just might, fail',
-			// Define a retry strategy
-			{
-				retries: {
-					limit: 5,
-					delay: '5 second',
-					backoff: 'exponential',
-				},
-				timeout: '15 minutes',
-			},
-			async () => {
-				// Do stuff here, with access to the state from our previous steps
-				if (Math.random() > 0.5) {
-					throw new Error('API call to $STORAGE_SYSTEM failed');
-				}
-			},
-		);
+		return {
+			status: "completed",
+			date: dateInput,
+			wodDetails,
+		};
 	}
 }
+
 // </docs-tag name="workflow-entrypoint">
 
 // <docs-tag name="workflows-fetch-handler">
@@ -85,14 +97,18 @@ export default {
 		// GET /?instanceId=<id here>
 		let id = url.searchParams.get('instanceId');
 		if (id) {
-			let instance = await env.MY_WORKFLOW.get(id);
+			let instance = await env.DAILY_SCRAPE_WORKFLOW.get(id);
 			return Response.json({
 				status: await instance.status(),
 			});
 		}
 
 		// Spawn a new instance and return the ID and status
-		let instance = await env.MY_WORKFLOW.create();
+		const today = new Date();
+		const dateString = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+		let instance = await env.DAILY_SCRAPE_WORKFLOW.create({
+			params: { date: dateString },
+		});
 		// You can also set the ID to match an ID in your own system
 		// and pass an optional payload to the Workflow
 		// let instance = await env.MY_WORKFLOW.create({
