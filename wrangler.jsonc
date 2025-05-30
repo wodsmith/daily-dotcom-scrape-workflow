@@ -18,7 +18,10 @@
 			"binding": "DAILY_SCRAPE_WORKFLOW",
 			"class_name": "DailyScrapeWorkflow"
 		}
-	]
+	],
+	"triggers": {
+		"crons": ["0 2 * * *"]
+	}
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
