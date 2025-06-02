@@ -21,6 +21,14 @@
 	],
 	"triggers": {
 		"crons": ["0 2 * * *"]
+	},
+	"queues": {
+		"producers": [
+			{
+				"binding": "WOD_QUEUE",
+				"queue": "dotcom-workouts",
+			}
+		]
 	}
 	/**
 	 * Smart Placement

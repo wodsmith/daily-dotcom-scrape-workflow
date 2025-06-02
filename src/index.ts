@@ -6,6 +6,7 @@ import { generateWodUrl, fetchWodPage, extractWodDetails, type WodDetails } from
 type Env = {
 	// Add your bindings here, e.g. Workers KV, D1, Workers AI, etc.
 	DAILY_SCRAPE_WORKFLOW: Workflow;
+	WOD_QUEUE: Queue;
 };
 
 // User-defined params passed to your workflow
@@ -74,6 +75,14 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 			wfLogger.warn("Step: Could not scrape WOD details.");
 		}
 
+		// Push WOD details to the queue
+		await step.do("push-to-queue", async () => {
+			await this.env.WOD_QUEUE.send({
+				date: dateInput,
+				wodDetails,
+			});
+		});
+
 		return {
 			status: "completed",
 			date: dateInput,
@@ -129,8 +138,13 @@ export async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionC
 	const dateString = today.toISOString().split('T')[0];
 	const logger = createLogger('Scheduled:dailyScrapeWorkflow');
 	logger.info(`Scheduled event triggered for ${dateString}`);
-	await env.DAILY_SCRAPE_WORKFLOW.create({
+	const instance = await env.DAILY_SCRAPE_WORKFLOW.create({
 		params: { date: dateString },
+	});
+	// Optionally, push a message to the queue for observability
+	await env.WOD_QUEUE.send({
+		date: dateString,
+		event: 'scheduled',
 	});
 }
 
