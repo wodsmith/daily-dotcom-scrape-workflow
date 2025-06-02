@@ -122,4 +122,16 @@ export default {
 	},
 };
 // </docs-tag name="workflows-fetch-handler">
+
+// Export a scheduled handler to trigger the workflow daily
+export async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+	const today = new Date();
+	const dateString = today.toISOString().split('T')[0];
+	const logger = createLogger('Scheduled:dailyScrapeWorkflow');
+	logger.info(`Scheduled event triggered for ${dateString}`);
+	await env.DAILY_SCRAPE_WORKFLOW.create({
+		params: { date: dateString },
+	});
+}
+
 // </docs-tag name="full-workflow-example">
