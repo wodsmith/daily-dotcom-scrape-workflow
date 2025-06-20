@@ -28,7 +28,7 @@ export class DatabaseService {
 	 */
 	async insertWorkout(workoutData: WorkoutInput): Promise<string> {
 		try {
-			const now = new Date();
+			const now = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
 			const workoutId = workoutData.id || `workout_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
 			logger.debug('Inserting workout', { workoutId, name: workoutData.name });
@@ -96,7 +96,7 @@ export class DatabaseService {
 				throw new Error(`Programming track ${trackId} does not exist`);
 			}
 
-			const now = new Date();
+			const now = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
 			const trackWorkoutId = `trwk_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
 			logger.debug('Adding workout to track', {
@@ -155,7 +155,7 @@ export class DatabaseService {
 				throw new Error(`Track workout ${trackWorkoutId} does not exist`);
 			}
 
-			const now = new Date();
+			const now = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
 			const scheduledInstanceId = `swi_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
 			logger.debug('Scheduling workout instance', {
@@ -169,7 +169,7 @@ export class DatabaseService {
 				scheduledInstanceId,
 				teamId,
 				trackWorkoutId,
-				scheduledDate,
+				Math.floor(scheduledDate.getTime() / 1000), // Convert Date to Unix timestamp
 				teamSpecificNotes || null,
 				scalingGuidanceForDay || null,
 				classTimes || null,
@@ -269,7 +269,7 @@ export class DatabaseService {
 
 			// Prepare all statements
 			for (const operation of operations) {
-				const now = new Date();
+				const now = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
 
 				switch (operation.type) {
 					case 'insertWorkout': {
@@ -306,8 +306,13 @@ export class DatabaseService {
 						const data = operation.data as ScheduledWorkoutInstanceInput & { id?: string };
 						const scheduledInstanceId = data.id || `swi_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
+						// Convert scheduledDate to Unix timestamp if it's a Date object
+						const scheduledDateTimestamp = data.scheduledDate instanceof Date
+							? Math.floor(data.scheduledDate.getTime() / 1000)
+							: data.scheduledDate;
+
 						const params = [
-							scheduledInstanceId, data.teamId, data.trackWorkoutId, data.scheduledDate,
+							scheduledInstanceId, data.teamId, data.trackWorkoutId, scheduledDateTimestamp,
 							data.teamSpecificNotes || null, data.scalingGuidanceForDay || null,
 							data.classTimes || null, now, now, 0
 						];
