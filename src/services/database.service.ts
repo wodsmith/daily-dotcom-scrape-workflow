@@ -14,12 +14,12 @@ import {
 } from '../db/types';
 import * as queries from '../db/queries';
 import { logger } from '../utils/logger';
-import { 
-	dateToUnixTimestamp, 
-	getCurrentPacificDate, 
+import {
+	dateToUnixTimestamp,
+	getCurrentPacificDate,
 	getCurrentPacificDateString,
 	createPacificDate,
-	getStartOfDayPacific 
+	getStartOfDayPacific
 } from '../utils/date-utils';
 
 export class DatabaseService {
@@ -39,8 +39,8 @@ export class DatabaseService {
 			const nowTimestamp = dateToUnixTimestamp(now);
 			const workoutId = workoutData.id || `workout_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
-			logger.debug('Inserting workout', { 
-				workoutId, 
+			logger.debug('Inserting workout', {
+				workoutId,
 				name: workoutData.name,
 				createdAtPacific: now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }),
 				createdAtTimestamp: nowTimestamp
@@ -242,9 +242,9 @@ export class DatabaseService {
 			// Ensure we're working with Pacific Time for consistent date filtering
 			const pacificStartOfDay = getStartOfDayPacific(date);
 			const dateTimestamp = dateToUnixTimestamp(pacificStartOfDay);
-			
-			logger.debug('Retrieving scheduled workouts', { 
-				teamId, 
+
+			logger.debug('Retrieving scheduled workouts', {
+				teamId,
 				requestedDate: date.toISOString(),
 				pacificStartOfDay: pacificStartOfDay.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }),
 				dateTimestamp
