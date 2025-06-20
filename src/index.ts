@@ -3,12 +3,14 @@ import { WorkflowEntrypoint, WorkflowStep, WorkflowEvent } from 'cloudflare:work
 import { createLogger } from './utils/logger';
 import { generateWodUrl, fetchWodPage, extractWodDetails, type WodDetails } from './scraper/dotcom-scraper';
 import { WodAnalysisAgent, type WodAnalysis, type Workout } from './ai/agent';
+import { DatabaseService } from './services/database.service';
 
 type Env = {
 	// Add your bindings here, e.g. Workers KV, D1, Workers AI, etc.
 	DAILY_SCRAPE_WORKFLOW: Workflow;
 	WOD_QUEUE: Queue;
 	AI: Ai; // Cloudflare Workers AI binding
+	DB: D1Database; // D1 database binding
 };
 
 // User-defined params passed to your workflow
@@ -75,6 +77,7 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 			let aiAnalysis: WodAnalysis | null = null;
 			let workoutObject: Workout | null = null;
 			let workoutSuggestions: string[] = [];
+			let dbResults: any = null;
 
 			if (wodDetails.isRestDay) {
 				wfLogger.info("Step: Today is a rest day on CrossFit.com.");
@@ -93,7 +96,68 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 
 				wfLogger.info(`Step: Generated structured workout object - ${JSON.stringify(workoutObject, null, 2)}`);
 
-				// Legacy AI analysis for backward compatibility
+				// Database operations
+				if (workoutObject) {
+					dbResults = await step.do("database-operations", async () => {
+						const dbService = new DatabaseService(this.env.DB);
+						
+						// Configuration from environment or default values
+						const defaultTrackId = 'ptrk_crossfit_dotcom';
+						const teamId = 'team_cokkpu1klwo0ulfhl1iwzpvn';
+						const userId = 'usr_cynhnsszya9jayxu0fsft5jg';
+
+						// Create workout data for database insertion (workoutObject is guaranteed non-null here)
+						const workoutData = {
+							id: workoutObject!.id,
+							name: workoutObject!.name,
+							description: workoutObject!.description,
+							scope: 'public' as const,
+							scheme: workoutObject!.scheme,
+							repsPerRound: workoutObject!.repsPerRound || undefined,
+							roundsToScore: workoutObject!.roundsToScore || undefined,
+							tiebreakScheme: workoutObject!.tiebreakScheme || undefined,
+							secondaryScheme: workoutObject!.secondaryScheme || undefined,
+							userId: userId,
+							sourceTrackId: defaultTrackId
+						};
+
+						// Insert workout
+						const workoutId = await dbService.insertWorkout(workoutData);
+						wfLogger.info(`Workout inserted with ID: ${workoutId}`);
+
+						// Get next day number for the track
+						const dayNumber = await dbService.getNextDayNumberForTrack(defaultTrackId);
+						
+						// Add workout to track
+						const trackWorkoutId = await dbService.addWorkoutToTrack(
+							workoutId,
+							defaultTrackId,
+							dayNumber,
+							undefined,
+							`CrossFit.com WOD for ${dateInput}`
+						);
+						wfLogger.info(`Workout added to track with ID: ${trackWorkoutId}`);
+
+						// Schedule workout for today
+						const scheduledInstanceId = await dbService.scheduleWorkoutForDate(
+							trackWorkoutId,
+							teamId,
+							date,
+							`Daily WOD from CrossFit.com`,
+							'Scale as needed for your fitness level'
+						);
+						wfLogger.info(`Workout scheduled with ID: ${scheduledInstanceId}`);
+
+						return {
+							workoutId,
+							trackWorkoutId,
+							scheduledInstanceId,
+							dayNumber
+						};
+					});
+
+					wfLogger.info(`Database operations completed successfully: ${JSON.stringify(dbResults)}`);
+				}
 				// aiAnalysis = await step.do("analyze-wod-with-ai", async () => {
 				// 	return aiAgent.analyzeWod(wodDetails.wodText || '');
 				// });
@@ -117,6 +181,7 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 				date: dateInput,
 				wodDetails,
 				workoutObject, // New structured workout object for database
+				databaseResults: dbResults, // Database operation results
 				aiAnalysis,
 				workoutSuggestions,
 			};
