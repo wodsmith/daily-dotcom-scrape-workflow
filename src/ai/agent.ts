@@ -61,13 +61,17 @@ export class WodAnalysisAgent {
 	async generateWorkoutObject(wodText: string): Promise<Workout> {
 		logger.info('Generating structured workout object from WOD text');
 
+		// Add current timestamp to ensure unique IDs even for similar workouts
+		const timestamp = Date.now().toString(36);
+		const randomComponent = Math.random().toString(36).substring(2, 6);
+
 		const prompt = `You are a CrossFit expert. Analyze the following workout (WOD) and provide a structured workout object.
 
 WOD: ${wodText}
 
 Please analyze this workout and provide a JSON object with the following structure:
 {
-	"id": "unique-workout-slug",
+	"id": "unique-workout-slug-${timestamp}-${randomComponent}",
 	"name": "Clear workout name/title",
 	"description": "Detailed description of the workout",
 	"scope": "private",
@@ -90,7 +94,7 @@ For the scheme field, choose from:
 - "pass-fail" for completion-based workouts
 
 Guidelines:
-- Generate a descriptive slug ID based on the workout content
+- Generate a descriptive slug ID based on the workout content, but include the timestamp and random components provided (${timestamp}-${randomComponent}) to ensure uniqueness
 - Extract or create a clear workout name
 - Provide detailed description including movements and structure
 - Choose the most appropriate primary scheme

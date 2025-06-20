@@ -12,6 +12,14 @@ export const INSERT_WORKOUT = `
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `;
 
+export const INSERT_WORKOUT_OR_IGNORE = `
+	INSERT OR IGNORE INTO workouts (
+		id, name, description, scope, scheme, repsPerRound, roundsToScore,
+		userId, sugarId, tiebreakScheme, secondaryScheme, sourceTrackId,
+		createdAt, updatedAt, updateCounter
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`;
+
 export const GET_WORKOUT_BY_ID = `
 	SELECT * FROM workouts WHERE id = ?
 `;

@@ -92,9 +92,22 @@ export class DatabaseService {
 					workoutId = this.generateWorkoutId();
 				} while (await this.workoutExists(workoutId));
 			} else {
-				// If ID is provided, check if it already exists
-				if (await this.workoutExists(workoutId)) {
-					throw new Error(`Workout with ID ${workoutId} already exists`);
+				// If ID is provided, check if it already exists and handle collision
+				let attempt = 0;
+				let originalId = workoutId;
+				while (await this.workoutExists(workoutId) && attempt < 5) {
+					attempt++;
+					const timestamp = Date.now().toString(36);
+					const randomStr = Math.random().toString(36).substring(2, 6);
+					workoutId = `${originalId}-${timestamp}-${randomStr}`;
+					logger.warn(`Workout ID collision detected, generating new ID: ${workoutId}`, {
+						originalId,
+						attempt
+					});
+				}
+				
+				if (attempt >= 5) {
+					throw new Error(`Unable to generate unique workout ID after 5 attempts for: ${originalId}`);
 				}
 			}
 
@@ -498,5 +511,70 @@ export class DatabaseService {
 			scalingGuidanceForDay,
 			classTimes
 		);
+	}
+
+	/**
+	 * Insert a new workout into the database with fallback for constraint violations
+	 * This method uses INSERT OR IGNORE as a last resort if the standard insertion fails
+	 */
+	async insertWorkoutWithFallback(workoutData: WorkoutInput): Promise<string> {
+		try {
+			// Try the standard insertion first
+			return await this.insertWorkout(workoutData);
+		} catch (error: any) {
+			// Check if this is a UNIQUE constraint violation
+			if (error?.message?.includes('UNIQUE constraint failed') || 
+				error?.message?.includes('SQLITE_CONSTRAINT')) {
+				
+				logger.warn('UNIQUE constraint violation detected, attempting fallback insertion', {
+					originalId: workoutData.id,
+					error: error.message
+				});
+
+				// Generate a new unique ID for the fallback
+				const now = getCurrentPacificDate();
+				const nowTimestamp = dateToUnixTimestamp(now);
+				const timestamp = Date.now().toString(36);
+				const randomStr = Math.random().toString(36).substring(2, 8);
+				const fallbackId = workoutData.id ? 
+					`${workoutData.id}-fallback-${timestamp}-${randomStr}` :
+					`workout-fallback-${timestamp}-${randomStr}`;
+
+				logger.info('Using fallback workout ID', { 
+					originalId: workoutData.id,
+					fallbackId 
+				});
+
+				const params = [
+					fallbackId,
+					workoutData.name,
+					workoutData.description,
+					workoutData.scope || 'private',
+					workoutData.scheme,
+					workoutData.repsPerRound || null,
+					workoutData.roundsToScore || 1,
+					workoutData.userId || null,
+					workoutData.sugarId || null,
+					workoutData.tiebreakScheme || null,
+					workoutData.secondaryScheme || null,
+					workoutData.sourceTrackId || null,
+					nowTimestamp,
+					nowTimestamp,
+					0
+				];
+
+				const result = await this.dbConnection.executeStatement(queries.INSERT_WORKOUT_OR_IGNORE, params);
+
+				if (result.success) {
+					logger.info('Workout inserted successfully with fallback ID', { workoutId: fallbackId });
+					return fallbackId;
+				} else {
+					throw new Error(`Failed to insert workout with fallback: ${result.error}`);
+				}
+			} else {
+				// Re-throw non-constraint errors
+				throw error;
+			}
+		}
 	}
 }
