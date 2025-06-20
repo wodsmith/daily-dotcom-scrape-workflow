@@ -54,40 +54,52 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 		const date = new Date(dateInput);
 		const wfLogger = createLogger(`Workflow:dailyScrapeWorkflow:${workflowId}`);
 
-		wfLogger.info(`Step: Generating URL for ${date.toISOString().split("T")[0]}.`);
-		const wodUrl = generateWodUrl(date);
+		try {
+			wfLogger.info(`Step: Generating URL for ${date.toISOString().split("T")[0]}.`);
+			const wodUrl = generateWodUrl(date);
 
-		wfLogger.info(`Step: Fetching page ${wodUrl}.`);
-		const htmlContent = await step.do("fetch-wod-page", async () => {
-			return fetchWodPage(wodUrl);
-		});
+			wfLogger.info(`Step: Fetching page ${wodUrl}.`);
+			const htmlContent = await step.do("fetch-wod-page", async () => {
+				return fetchWodPage(wodUrl);
+			});
 
-		wfLogger.info("Step: Extracting WOD details.");
-		const wodDetails: WodDetails = extractWodDetails(htmlContent);
+			wfLogger.info("Step: Extracting WOD details.");
+			const wodDetails: WodDetails = extractWodDetails(htmlContent);
 
-		if (wodDetails.isRestDay) {
-			wfLogger.info("Step: Today is a rest day on CrossFit.com.");
-		} else if (wodDetails.wodText) {
-			wfLogger.info(
-				`Step: Successfully scraped WOD: ${wodDetails.wodText}...`,
-			);
-		} else {
-			wfLogger.warn("Step: Could not scrape WOD details.");
-		}
+			if (wodDetails.isRestDay) {
+				wfLogger.info("Step: Today is a rest day on CrossFit.com.");
+			} else if (wodDetails.wodText) {
+				wfLogger.info(
+					`Step: Successfully scraped WOD: ${wodDetails.wodText}...`,
+				);
+			} else {
+				wfLogger.warn("Step: Could not scrape WOD details.");
+			}
 
-		// Push WOD details to the queue
-		await step.do("push-to-queue", async () => {
-			await this.env.WOD_QUEUE.send({
+			// Push WOD details to the queue
+			await step.do("push-to-queue", async () => {
+				await this.env.WOD_QUEUE.send({
+					date: dateInput,
+					wodDetails,
+				});
+			});
+
+			return {
+				status: "completed",
 				date: dateInput,
 				wodDetails,
-			});
-		});
-
-		return {
-			status: "completed",
-			date: dateInput,
-			wodDetails,
-		};
+			};
+		} catch (err: any) {
+			wfLogger.error(`Workflow failed: ${err?.message || err}`);
+			if (err?.stack) {
+				wfLogger.error(`Stack trace: ${err.stack}`);
+			}
+			console.error('Workflow failed:', err);
+			if (err?.stack) {
+				console.error('Stack trace:', err.stack);
+			}
+			throw err;
+		}
 	}
 }
 
@@ -96,56 +108,66 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 // <docs-tag name="workflows-fetch-handler">
 export default {
 	async fetch(req: Request, env: Env): Promise<Response> {
-		let url = new URL(req.url);
+		try {
+			let url = new URL(req.url);
 
-		if (url.pathname.startsWith('/favicon')) {
-			return Response.json({}, { status: 404 });
-		}
+			if (url.pathname.startsWith('/favicon')) {
+				return Response.json({}, { status: 404 });
+			}
 
-		// Get the status of an existing instance, if provided
-		// GET /?instanceId=<id here>
-		let id = url.searchParams.get('instanceId');
-		if (id) {
-			let instance = await env.DAILY_SCRAPE_WORKFLOW.get(id);
-			return Response.json({
-				status: await instance.status(),
+			// Get the status of an existing instance, if provided
+			// GET /?instanceId=<id here>
+			let id = url.searchParams.get('instanceId');
+			if (id) {
+				let instance = await env.DAILY_SCRAPE_WORKFLOW.get(id);
+				return Response.json({
+					status: await instance.status(),
+				});
+			}
+
+			// Spawn a new instance and return the ID and status
+			const today = new Date();
+			const dateString = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+			let instance = await env.DAILY_SCRAPE_WORKFLOW.create({
+				params: { date: dateString },
 			});
+			return Response.json({
+				id: instance.id,
+				details: await instance.status(),
+			});
+		} catch (err: any) {
+			console.error('Fetch handler failed:', err);
+			if (err?.stack) {
+				console.error('Stack trace:', err.stack);
+			}
+			return Response.json({ error: err?.message || String(err) }, { status: 500 });
 		}
-
-		// Spawn a new instance and return the ID and status
-		const today = new Date();
-		const dateString = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
-		let instance = await env.DAILY_SCRAPE_WORKFLOW.create({
-			params: { date: dateString },
-		});
-		// You can also set the ID to match an ID in your own system
-		// and pass an optional payload to the Workflow
-		// let instance = await env.MY_WORKFLOW.create({
-		// 	id: 'id-from-your-system',
-		// 	params: { payload: 'to send' },
-		// });
-		return Response.json({
-			id: instance.id,
-			details: await instance.status(),
-		});
 	},
 };
 // </docs-tag name="workflows-fetch-handler">
 
 // Export a scheduled handler to trigger the workflow daily
 export async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-	const today = new Date();
-	const dateString = today.toISOString().split('T')[0];
-	const logger = createLogger('Scheduled:dailyScrapeWorkflow');
-	logger.info(`Scheduled event triggered for ${dateString}`);
-	const instance = await env.DAILY_SCRAPE_WORKFLOW.create({
-		params: { date: dateString },
-	});
-	// Optionally, push a message to the queue for observability
-	await env.WOD_QUEUE.send({
-		date: dateString,
-		event: 'scheduled',
-	});
+	try {
+		const today = new Date();
+		const dateString = today.toISOString().split('T')[0];
+		const logger = createLogger('Scheduled:dailyScrapeWorkflow');
+		logger.info(`Scheduled event triggered for ${dateString}`);
+		const instance = await env.DAILY_SCRAPE_WORKFLOW.create({
+			params: { date: dateString },
+		});
+		// Optionally, push a message to the queue for observability
+		await env.WOD_QUEUE.send({
+			date: dateString,
+			event: 'scheduled',
+		});
+	} catch (err: any) {
+		console.error('Scheduled handler failed:', err);
+		if (err?.stack) {
+			console.error('Stack trace:', err.stack);
+		}
+		throw err;
+	}
 }
 
 // </docs-tag name="full-workflow-example">
