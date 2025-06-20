@@ -31,13 +31,72 @@ export class DatabaseService {
 	}
 
 	/**
+	 * Generate a unique workout ID with better collision resistance
+	 */
+	private generateWorkoutId(): string {
+		const timestamp = Date.now().toString(36);
+		const randomStr = Math.random().toString(36).substring(2, 12);
+		const counter = Math.floor(Math.random() * 10000).toString(36);
+		return `workout_${timestamp}_${randomStr}_${counter}`;
+	}
+
+	/**
+	 * Generate a unique track workout ID
+	 */
+	private generateTrackWorkoutId(): string {
+		const timestamp = Date.now().toString(36);
+		const randomStr = Math.random().toString(36).substring(2, 12);
+		const counter = Math.floor(Math.random() * 10000).toString(36);
+		return `trwk_${timestamp}_${randomStr}_${counter}`;
+	}
+
+	/**
+	 * Generate a unique scheduled workout instance ID
+	 */
+	private generateScheduledInstanceId(): string {
+		const timestamp = Date.now().toString(36);
+		const randomStr = Math.random().toString(36).substring(2, 12);
+		const counter = Math.floor(Math.random() * 10000).toString(36);
+		return `swi_${timestamp}_${randomStr}_${counter}`;
+	}
+
+	/**
+	 * Check if a workout with the given ID already exists
+	 */
+	private async workoutExists(workoutId: string): Promise<boolean> {
+		try {
+			const result = await this.dbConnection.executeQueryFirst<{ count: number }>(
+				queries.CHECK_WORKOUT_EXISTS,
+				[workoutId]
+			);
+			return (result?.count || 0) > 0;
+		} catch (error) {
+			logger.error('Error checking workout existence', { workoutId, error });
+			return false;
+		}
+	}
+
+	/**
 	 * Insert a new workout into the database
 	 */
 	async insertWorkout(workoutData: WorkoutInput): Promise<string> {
 		try {
 			const now = getCurrentPacificDate(); // Use Pacific Time for consistent timestamp handling
 			const nowTimestamp = dateToUnixTimestamp(now);
-			const workoutId = workoutData.id || `workout_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+			
+			// Generate or use provided workout ID
+			let workoutId = workoutData.id;
+			if (!workoutId) {
+				// Generate a unique ID and ensure it doesn't already exist
+				do {
+					workoutId = this.generateWorkoutId();
+				} while (await this.workoutExists(workoutId));
+			} else {
+				// If ID is provided, check if it already exists
+				if (await this.workoutExists(workoutId)) {
+					throw new Error(`Workout with ID ${workoutId} already exists`);
+				}
+			}
 
 			logger.debug('Inserting workout', {
 				workoutId,
@@ -111,7 +170,7 @@ export class DatabaseService {
 
 			const now = getCurrentPacificDate(); // Use Pacific Time for consistent timestamp handling
 			const nowTimestamp = dateToUnixTimestamp(now);
-			const trackWorkoutId = `trwk_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+			const trackWorkoutId = this.generateTrackWorkoutId();
 
 			logger.debug('Adding workout to track', {
 				trackWorkoutId,
@@ -172,7 +231,7 @@ export class DatabaseService {
 
 			const now = getCurrentPacificDate(); // Use Pacific Time for consistent timestamp handling
 			const nowTimestamp = dateToUnixTimestamp(now);
-			const scheduledInstanceId = `swi_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+			const scheduledInstanceId = this.generateScheduledInstanceId();
 
 			logger.debug('Scheduling workout instance', {
 				scheduledInstanceId,
@@ -305,23 +364,37 @@ export class DatabaseService {
 				switch (operation.type) {
 					case 'insertWorkout': {
 						const data = operation.data as WorkoutInput;
-						const workoutId = data.id || `workout_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+						let workoutId = data.id;
+						if (!workoutId) {
+							// Generate a unique ID for transaction
+							do {
+								workoutId = this.generateWorkoutId();
+							} while (await this.workoutExists(workoutId));
+						}
+
+						// Check for ID collision and regenerate if necessary
+						let finalWorkoutId = workoutId;
+						let attempt = 0;
+						while (await this.workoutExists(finalWorkoutId) && attempt < 5) {
+							attempt++;
+							finalWorkoutId = `${workoutId}_${attempt}`;
+						}
 
 						const params = [
-							workoutId, data.name, data.description, data.scope || 'private', data.scheme,
+							finalWorkoutId, data.name, data.description, data.scope || 'private', data.scheme,
 							data.repsPerRound || null, data.roundsToScore || 1, data.userId || null,
 							data.sugarId || null, data.tiebreakScheme || null, data.secondaryScheme || null,
 							data.sourceTrackId || null, nowTimestamp, nowTimestamp, 0
 						];
 
 						statements.push({ sql: queries.INSERT_WORKOUT, params });
-						results.push({ type: 'insertWorkout', id: workoutId });
+						results.push({ type: 'insertWorkout', id: finalWorkoutId });
 						break;
 					}
 
 					case 'addWorkoutToTrack': {
 						const data = operation.data as TrackWorkoutInput & { id?: string };
-						const trackWorkoutId = data.id || `trwk_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+						const trackWorkoutId = data.id || this.generateTrackWorkoutId();
 
 						const params = [
 							trackWorkoutId, data.trackId, data.workoutId, data.dayNumber,
@@ -335,7 +408,7 @@ export class DatabaseService {
 
 					case 'scheduleWorkout': {
 						const data = operation.data as ScheduledWorkoutInstanceInput & { id?: string };
-						const scheduledInstanceId = data.id || `swi_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+						const scheduledInstanceId = data.id || this.generateScheduledInstanceId();
 
 						// Convert scheduledDate to Unix timestamp if it's a Date object
 						const scheduledDateTimestamp = data.scheduledDate instanceof Date
