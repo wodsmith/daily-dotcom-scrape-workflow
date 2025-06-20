@@ -98,7 +98,7 @@ Guidelines:
 - Set roundsToScore (usually 1 for most workouts, higher for multi-round scoring)
 - Include tiebreakScheme only if there's a clear tiebreaker
 - Include secondaryScheme only if there's a secondary scoring component
-
+- Use meters when distance is involved
 Only respond with valid JSON, no additional text.`;
 
 		try {

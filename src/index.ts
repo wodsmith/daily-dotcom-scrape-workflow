@@ -1,6 +1,7 @@
 // <docs-tag name="full-workflow-example">
 import { WorkflowEntrypoint, WorkflowStep, WorkflowEvent } from 'cloudflare:workers';
 import { createLogger } from './utils/logger';
+import { getCurrentPacificDateString, createPacificDate } from './utils/date-utils';
 import { generateWodUrl, fetchWodPage, extractWodDetails, type WodDetails } from './scraper/dotcom-scraper';
 import { WodAnalysisAgent, type WodAnalysis, type Workout } from './ai/agent';
 import { DatabaseService } from './services/database.service';
@@ -58,8 +59,17 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 
 		const workflowId = event.instanceId;
 		const dateInput = event.payload.date;
-		const date = new Date(dateInput);
+		const date = createPacificDate(dateInput); // Use Pacific Time for scheduling
 		const wfLogger = createLogger(`Workflow:dailyScrapeWorkflow:${workflowId}`);
+
+		// Log timezone information for debugging
+		wfLogger.info(`Workflow started`, {
+			dateInput,
+			scheduledDatePacific: date.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }),
+			scheduledDateUTC: date.toISOString(),
+			currentTimePacific: new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }),
+			currentTimeUTC: new Date().toISOString()
+		});
 
 		try {
 			wfLogger.info(`Step: Generating URL for ${date.toISOString().split("T")[0]}.`);
@@ -224,8 +234,7 @@ export default {
 			}
 
 			// Spawn a new instance and return the ID and status
-			const today = new Date();
-			const dateString = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+			const dateString = getCurrentPacificDateString(); // Use Pacific Time
 			let instance = await env.DAILY_SCRAPE_WORKFLOW.create({
 				params: { date: dateString },
 			});
@@ -247,10 +256,9 @@ export default {
 // Export a scheduled handler to trigger the workflow daily
 export async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
 	try {
-		const today = new Date();
-		const dateString = today.toISOString().split('T')[0];
+		const dateString = getCurrentPacificDateString(); // Use Pacific Time
 		const logger = createLogger('Scheduled:dailyScrapeWorkflow');
-		logger.info(`Scheduled event triggered for ${dateString}`);
+		logger.info(`Scheduled event triggered for Pacific Time date: ${dateString}`);
 		const instance = await env.DAILY_SCRAPE_WORKFLOW.create({
 			params: { date: dateString },
 		});

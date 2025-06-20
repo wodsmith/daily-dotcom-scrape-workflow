@@ -14,6 +14,13 @@ import {
 } from '../db/types';
 import * as queries from '../db/queries';
 import { logger } from '../utils/logger';
+import { 
+	dateToUnixTimestamp, 
+	getCurrentPacificDate, 
+	getCurrentPacificDateString,
+	createPacificDate,
+	getStartOfDayPacific 
+} from '../utils/date-utils';
 
 export class DatabaseService {
 	private dbConnection: DatabaseConnection;
@@ -28,10 +35,16 @@ export class DatabaseService {
 	 */
 	async insertWorkout(workoutData: WorkoutInput): Promise<string> {
 		try {
-			const now = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
+			const now = getCurrentPacificDate(); // Use Pacific Time for consistent timestamp handling
+			const nowTimestamp = dateToUnixTimestamp(now);
 			const workoutId = workoutData.id || `workout_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
-			logger.debug('Inserting workout', { workoutId, name: workoutData.name });
+			logger.debug('Inserting workout', { 
+				workoutId, 
+				name: workoutData.name,
+				createdAtPacific: now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }),
+				createdAtTimestamp: nowTimestamp
+			});
 
 			const params = [
 				workoutId,
@@ -46,8 +59,8 @@ export class DatabaseService {
 				workoutData.tiebreakScheme || null,
 				workoutData.secondaryScheme || null,
 				workoutData.sourceTrackId || null,
-				now,
-				now,
+				nowTimestamp,
+				nowTimestamp,
 				0
 			];
 
@@ -96,7 +109,8 @@ export class DatabaseService {
 				throw new Error(`Programming track ${trackId} does not exist`);
 			}
 
-			const now = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
+			const now = getCurrentPacificDate(); // Use Pacific Time for consistent timestamp handling
+			const nowTimestamp = dateToUnixTimestamp(now);
 			const trackWorkoutId = `trwk_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
 			logger.debug('Adding workout to track', {
@@ -104,7 +118,8 @@ export class DatabaseService {
 				workoutId,
 				trackId,
 				dayNumber,
-				weekNumber
+				weekNumber,
+				createdAtPacific: now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
 			});
 
 			const params = [
@@ -114,8 +129,8 @@ export class DatabaseService {
 				dayNumber,
 				weekNumber || null,
 				notes || null,
-				now,
-				now,
+				nowTimestamp,
+				nowTimestamp,
 				0
 			];
 
@@ -155,26 +170,31 @@ export class DatabaseService {
 				throw new Error(`Track workout ${trackWorkoutId} does not exist`);
 			}
 
-			const now = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
+			const now = getCurrentPacificDate(); // Use Pacific Time for consistent timestamp handling
+			const nowTimestamp = dateToUnixTimestamp(now);
 			const scheduledInstanceId = `swi_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
 			logger.debug('Scheduling workout instance', {
 				scheduledInstanceId,
 				trackWorkoutId,
 				teamId,
-				scheduledDate
+				scheduledDate,
+				scheduledDatePacific: scheduledDate.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }),
+				scheduledDateUTC: scheduledDate.toISOString(),
+				scheduledDateTimestamp: dateToUnixTimestamp(scheduledDate),
+				createdAtPacific: now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
 			});
 
 			const params = [
 				scheduledInstanceId,
 				teamId,
 				trackWorkoutId,
-				Math.floor(scheduledDate.getTime() / 1000), // Convert Date to Unix timestamp
+				dateToUnixTimestamp(scheduledDate), // Use utility function for date conversion
 				teamSpecificNotes || null,
 				scalingGuidanceForDay || null,
 				classTimes || null,
-				now,
-				now,
+				nowTimestamp,
+				nowTimestamp,
 				0
 			];
 
@@ -215,14 +235,24 @@ export class DatabaseService {
 
 	/**
 	 * Get scheduled workouts for a team on a specific date
+	 * Date should be in Pacific Time for proper filtering
 	 */
 	async getScheduledWorkouts(teamId: string, date: Date): Promise<any[]> {
 		try {
-			logger.debug('Retrieving scheduled workouts', { teamId, date: date.toISOString() });
+			// Ensure we're working with Pacific Time for consistent date filtering
+			const pacificStartOfDay = getStartOfDayPacific(date);
+			const dateTimestamp = dateToUnixTimestamp(pacificStartOfDay);
+			
+			logger.debug('Retrieving scheduled workouts', { 
+				teamId, 
+				requestedDate: date.toISOString(),
+				pacificStartOfDay: pacificStartOfDay.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }),
+				dateTimestamp
+			});
 
 			const workouts = await this.dbConnection.executeQuery(
 				queries.GET_SCHEDULED_WORKOUTS_BY_TEAM_AND_DATE,
-				[teamId, date]
+				[teamId, dateTimestamp]
 			);
 
 			logger.debug('Scheduled workouts retrieved', { teamId, count: workouts.length });
@@ -269,7 +299,8 @@ export class DatabaseService {
 
 			// Prepare all statements
 			for (const operation of operations) {
-				const now = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
+				const now = getCurrentPacificDate(); // Use Pacific Time for consistent timestamp handling
+				const nowTimestamp = dateToUnixTimestamp(now);
 
 				switch (operation.type) {
 					case 'insertWorkout': {
@@ -280,7 +311,7 @@ export class DatabaseService {
 							workoutId, data.name, data.description, data.scope || 'private', data.scheme,
 							data.repsPerRound || null, data.roundsToScore || 1, data.userId || null,
 							data.sugarId || null, data.tiebreakScheme || null, data.secondaryScheme || null,
-							data.sourceTrackId || null, now, now, 0
+							data.sourceTrackId || null, nowTimestamp, nowTimestamp, 0
 						];
 
 						statements.push({ sql: queries.INSERT_WORKOUT, params });
@@ -294,7 +325,7 @@ export class DatabaseService {
 
 						const params = [
 							trackWorkoutId, data.trackId, data.workoutId, data.dayNumber,
-							data.weekNumber || null, data.notes || null, now, now, 0
+							data.weekNumber || null, data.notes || null, nowTimestamp, nowTimestamp, 0
 						];
 
 						statements.push({ sql: queries.INSERT_TRACK_WORKOUT, params });
@@ -308,13 +339,13 @@ export class DatabaseService {
 
 						// Convert scheduledDate to Unix timestamp if it's a Date object
 						const scheduledDateTimestamp = data.scheduledDate instanceof Date
-							? Math.floor(data.scheduledDate.getTime() / 1000)
+							? dateToUnixTimestamp(data.scheduledDate)
 							: data.scheduledDate;
 
 						const params = [
 							scheduledInstanceId, data.teamId, data.trackWorkoutId, scheduledDateTimestamp,
 							data.teamSpecificNotes || null, data.scalingGuidanceForDay || null,
-							data.classTimes || null, now, now, 0
+							data.classTimes || null, nowTimestamp, nowTimestamp, 0
 						];
 
 						statements.push({ sql: queries.INSERT_SCHEDULED_WORKOUT_INSTANCE, params });
@@ -343,5 +374,56 @@ export class DatabaseService {
 			logger.error('Transaction failed', { operationCount: operations.length, error });
 			throw error;
 		}
+	}
+
+	/**
+	 * Get scheduled workouts for today (Pacific Time)
+	 */
+	async getTodaysScheduledWorkouts(teamId: string): Promise<any[]> {
+		const today = getCurrentPacificDate();
+		return this.getScheduledWorkouts(teamId, today);
+	}
+
+	/**
+	 * Schedule a workout for today (Pacific Time)
+	 */
+	async scheduleWorkoutForToday(
+		trackWorkoutId: string,
+		teamId: string,
+		teamSpecificNotes?: string,
+		scalingGuidanceForDay?: string,
+		classTimes?: string
+	): Promise<string> {
+		const today = getCurrentPacificDate();
+		return this.scheduleWorkoutForDate(
+			trackWorkoutId,
+			teamId,
+			today,
+			teamSpecificNotes,
+			scalingGuidanceForDay,
+			classTimes
+		);
+	}
+
+	/**
+	 * Schedule a workout for a specific Pacific Time date string (YYYY-MM-DD)
+	 */
+	async scheduleWorkoutForPacificDate(
+		trackWorkoutId: string,
+		teamId: string,
+		dateString: string,
+		teamSpecificNotes?: string,
+		scalingGuidanceForDay?: string,
+		classTimes?: string
+	): Promise<string> {
+		const date = createPacificDate(dateString);
+		return this.scheduleWorkoutForDate(
+			trackWorkoutId,
+			teamId,
+			date,
+			teamSpecificNotes,
+			scalingGuidanceForDay,
+			classTimes
+		);
 	}
 }

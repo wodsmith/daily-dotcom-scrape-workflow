@@ -3,10 +3,22 @@
 // Export to make this a module
 export { };
 
-const today = new Date().toISOString().split('T')[0];
+// Get current date in Pacific Time
+const getCurrentPacificDateString = (): string => {
+	const now = new Date();
+
+	// Get Pacific date components
+	const pacificDate = now.toLocaleDateString('en-CA', {
+		timeZone: 'America/Los_Angeles'
+	});
+
+	return pacificDate; // Returns YYYY-MM-DD format
+};
+
+const today = getCurrentPacificDateString();
 const params = `{"date":"${today}"}`;
 
-console.log(`Triggering workflow for date: ${today}`);
+console.log(`Triggering workflow for Pacific Time date: ${today}`);
 
 const proc = Bun.spawn([
 	"pnpm",
