@@ -7,6 +7,9 @@ declare namespace Cloudflare {
 		AI: Ai;
 		DAILY_SCRAPE_WORKFLOW: Workflow;
 		DB: D1Database;
+		DEFAULT_TRACK_ID: string;
+		TEAM_ID: string;
+		USER_ID: string;
 	}
 }
 interface Env extends Cloudflare.Env { }

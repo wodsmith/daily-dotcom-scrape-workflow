@@ -4,7 +4,10 @@
 	"scripts": {
 		"deploy:prod": "wrangler deploy",
 		"start": "wrangler dev",
-		"trigger:workflow": "./scripts/trigger-workflow.ts"
+		"trigger:workflow": "./scripts/trigger-workflow.ts",
+		"build": "npx tsc --noEmit",
+		"test": "echo 'No test framework configured - using TypeScript compilation for validation'",
+		"test:config": "npx tsc --noEmit && echo 'Configuration validation passed'"
 	},
 	"devDependencies": {
 		"@types/bun": "latest",

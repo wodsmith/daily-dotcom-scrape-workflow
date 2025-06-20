@@ -39,7 +39,7 @@
 			"database_name": "wodsmith-db",
 			"database_id": "931185e9-99e5-48f0-bf70-d03ca5936f2d"
 		}
-	]
+	],
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
@@ -57,7 +57,11 @@
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
 	 */
-	// "vars": { "MY_VARIABLE": "production_value" },
+	"vars": { 
+		"DEFAULT_TRACK_ID": "ptrk_crossfit_dotcom",
+		"TEAM_ID": "team_cokkpu1klwo0ulfhl1iwzpvn",
+		"USER_ID": "usr_cynhnsszya9jayxu0fsft5jg"
+	}
 	/**
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/

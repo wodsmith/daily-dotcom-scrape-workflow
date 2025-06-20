@@ -11,6 +11,9 @@ type Env = {
 	WOD_QUEUE: Queue;
 	AI: Ai; // Cloudflare Workers AI binding
 	DB: D1Database; // D1 database binding
+	DEFAULT_TRACK_ID: string;
+	TEAM_ID: string;
+	USER_ID: string;
 };
 
 // User-defined params passed to your workflow
@@ -101,10 +104,10 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 					dbResults = await step.do("database-operations", async () => {
 						const dbService = new DatabaseService(this.env.DB);
 						
-						// Configuration from environment or default values
-						const defaultTrackId = 'ptrk_crossfit_dotcom';
-						const teamId = 'team_cokkpu1klwo0ulfhl1iwzpvn';
-						const userId = 'usr_cynhnsszya9jayxu0fsft5jg';
+						// Configuration from environment variables
+						const defaultTrackId = this.env.DEFAULT_TRACK_ID || 'ptrk_crossfit_dotcom';
+						const teamId = this.env.TEAM_ID || 'team_cokkpu1klwo0ulfhl1iwzpvn';
+						const userId = this.env.USER_ID || 'usr_cynhnsszya9jayxu0fsft5jg';
 
 						// Create workout data for database insertion (workoutObject is guaranteed non-null here)
 						const workoutData = {
