@@ -32,7 +32,14 @@
 				"queue": "dotcom-workouts"
 			}
 		]
-	}
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "wodsmith-db",
+			"database_id": "931185e9-99e5-48f0-bf70-d03ca5936f2d"
+		}
+	]
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

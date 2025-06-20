@@ -6,6 +6,7 @@ declare namespace Cloudflare {
 		WOD_QUEUE: Queue;
 		AI: Ai;
 		DAILY_SCRAPE_WORKFLOW: Workflow;
+		DB: D1Database;
 	}
 }
 interface Env extends Cloudflare.Env { }
