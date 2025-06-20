@@ -83,7 +83,7 @@ export class DatabaseService {
 		try {
 			const now = getCurrentPacificDate(); // Use Pacific Time for consistent timestamp handling
 			const nowTimestamp = dateToUnixTimestamp(now);
-			
+
 			// Generate or use provided workout ID
 			let workoutId = workoutData.id;
 			if (!workoutId) {

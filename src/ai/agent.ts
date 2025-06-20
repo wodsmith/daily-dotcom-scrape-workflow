@@ -137,13 +137,18 @@ Only respond with valid JSON, no additional text.`;
 			logger.error('Error generating workout object:', error);
 
 			// Generate a fallback workout object with basic info extracted from the text
-			const fallbackId = wodText
+			// Add timestamp and random component to ensure uniqueness
+			const baseId = wodText
 				.toLowerCase()
 				.replace(/[^a-z0-9\s]/g, '')
 				.trim()
 				.split(/\s+/)
 				.slice(0, 3)
-				.join('-') || `workout-${Date.now()}`;
+				.join('-') || 'workout';
+			
+			const timestamp = Date.now().toString(36);
+			const randomStr = Math.random().toString(36).substring(2, 8);
+			const fallbackId = `${baseId}-${timestamp}-${randomStr}`;
 
 			const fallbackName = wodText.split('\n')[0]?.trim() || 'Untitled Workout';
 
