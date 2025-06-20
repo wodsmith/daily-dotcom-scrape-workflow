@@ -149,7 +149,7 @@ Only respond with valid JSON, no additional text.`;
 				.split(/\s+/)
 				.slice(0, 3)
 				.join('-') || 'workout';
-			
+
 			const timestamp = Date.now().toString(36);
 			const randomStr = Math.random().toString(36).substring(2, 8);
 			const fallbackId = `${baseId}-${timestamp}-${randomStr}`;

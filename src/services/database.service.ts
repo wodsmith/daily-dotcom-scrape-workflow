@@ -105,7 +105,7 @@ export class DatabaseService {
 						attempt
 					});
 				}
-				
+
 				if (attempt >= 5) {
 					throw new Error(`Unable to generate unique workout ID after 5 attempts for: ${originalId}`);
 				}
@@ -519,13 +519,25 @@ export class DatabaseService {
 	 */
 	async insertWorkoutWithFallback(workoutData: WorkoutInput): Promise<string> {
 		try {
-			// Try the standard insertion first
+			// First, check if a workout with the same name already exists
+			const existingWorkout = await this.findExistingWorkoutByName(workoutData.name);
+
+			if (existingWorkout) {
+				logger.info('Found existing workout with same name, skipping insertion', {
+					requestedName: workoutData.name,
+					existingWorkoutId: existingWorkout.id,
+					existingWorkoutName: existingWorkout.name
+				});
+				return existingWorkout.id;
+			}
+
+			// If no existing workout found, try the standard insertion
 			return await this.insertWorkout(workoutData);
 		} catch (error: any) {
 			// Check if this is a UNIQUE constraint violation
-			if (error?.message?.includes('UNIQUE constraint failed') || 
+			if (error?.message?.includes('UNIQUE constraint failed') ||
 				error?.message?.includes('SQLITE_CONSTRAINT')) {
-				
+
 				logger.warn('UNIQUE constraint violation detected, attempting fallback insertion', {
 					originalId: workoutData.id,
 					error: error.message
@@ -536,13 +548,13 @@ export class DatabaseService {
 				const nowTimestamp = dateToUnixTimestamp(now);
 				const timestamp = Date.now().toString(36);
 				const randomStr = Math.random().toString(36).substring(2, 8);
-				const fallbackId = workoutData.id ? 
+				const fallbackId = workoutData.id ?
 					`${workoutData.id}-fallback-${timestamp}-${randomStr}` :
 					`workout-fallback-${timestamp}-${randomStr}`;
 
-				logger.info('Using fallback workout ID', { 
+				logger.info('Using fallback workout ID', {
 					originalId: workoutData.id,
-					fallbackId 
+					fallbackId
 				});
 
 				const params = [
@@ -575,6 +587,66 @@ export class DatabaseService {
 				// Re-throw non-constraint errors
 				throw error;
 			}
+		}
+	}
+
+	/**
+	 * Search for workouts by name (case-insensitive partial match)
+	 */
+	async searchWorkoutsByName(workoutName: string): Promise<Workout[]> {
+		try {
+			const searchPattern = `%${workoutName}%`;
+			const result = await this.dbConnection.executeQuery<Workout>(
+				queries.SEARCH_WORKOUTS_BY_NAME,
+				[searchPattern]
+			);
+
+			logger.debug('Searched workouts by name', {
+				workoutName,
+				searchPattern,
+				foundCount: result.length
+			});
+
+			return result;
+		} catch (error) {
+			logger.error('Error searching workouts by name', { workoutName, error });
+			throw error;
+		}
+	}
+
+	/**
+	 * Check if a workout with similar name already exists
+	 * Returns the existing workout if found, null otherwise
+	 */
+	async findExistingWorkoutByName(workoutName: string): Promise<Workout | null> {
+		try {
+			const matchingWorkouts = await this.searchWorkoutsByName(workoutName);
+
+			// Look for exact match first
+			const exactMatch = matchingWorkouts.find(w =>
+				w.name.toLowerCase() === workoutName.toLowerCase()
+			);
+
+			if (exactMatch) {
+				logger.info('Found exact workout name match', {
+					workoutName,
+					existingWorkoutId: exactMatch.id
+				});
+				return exactMatch;
+			}
+
+			// If no exact match but we have similar workouts, log them for visibility
+			if (matchingWorkouts.length > 0) {
+				logger.info('Found similar workout names', {
+					workoutName,
+					similarWorkouts: matchingWorkouts.map(w => ({ id: w.id, name: w.name }))
+				});
+			}
+
+			return null;
+		} catch (error) {
+			logger.error('Error finding existing workout by name', { workoutName, error });
+			return null;
 		}
 	}
 }

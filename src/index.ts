@@ -133,9 +133,9 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 							sourceTrackId: defaultTrackId
 						};
 
-						// Insert workout with fallback for constraint violations
+						// Insert workout with fallback for constraint violations (or find existing)
 						const workoutId = await dbService.insertWorkoutWithFallback(workoutData);
-						wfLogger.info(`Workout inserted with ID: ${workoutId}`);
+						wfLogger.info(`Workout processed with ID: ${workoutId} (may be existing or newly created)`);
 
 						// Get next day number for the track
 						const dayNumber = await dbService.getNextDayNumberForTrack(defaultTrackId);

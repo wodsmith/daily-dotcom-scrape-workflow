@@ -24,6 +24,10 @@ export const GET_WORKOUT_BY_ID = `
 	SELECT * FROM workouts WHERE id = ?
 `;
 
+export const SEARCH_WORKOUTS_BY_NAME = `
+	SELECT * FROM workouts WHERE name LIKE ? ORDER BY createdAt DESC LIMIT 10
+`;
+
 export const UPDATE_WORKOUT = `
 	UPDATE workouts 
 	SET name = ?, description = ?, scope = ?, scheme = ?, repsPerRound = ?,
