@@ -21,16 +21,16 @@ export class DatabaseConnection {
 			logger.debug(`Executing SQL: ${sql.substring(0, 100)}...`, { paramCount: params.length });
 			const statement = this.db.prepare(sql);
 			const result = await statement.bind(...params).run();
-			
+
 			if (!result.success) {
 				throw new Error(`SQL execution failed: ${result.error}`);
 			}
-			
-			logger.debug('SQL execution successful', { 
+
+			logger.debug('SQL execution successful', {
 				changes: result.meta?.changes,
-				lastRowId: result.meta?.last_row_id 
+				lastRowId: result.meta?.last_row_id
 			});
-			
+
 			return result;
 		} catch (error) {
 			logger.error('Database execution error', { sql: sql.substring(0, 100), error });
@@ -46,11 +46,11 @@ export class DatabaseConnection {
 			logger.debug(`Executing query: ${sql.substring(0, 100)}...`, { paramCount: params.length });
 			const statement = this.db.prepare(sql);
 			const result = await statement.bind(...params).all();
-			
+
 			if (!result.success) {
 				throw new Error(`Query execution failed: ${result.error}`);
 			}
-			
+
 			logger.debug('Query execution successful', { resultCount: result.results?.length || 0 });
 			return result.results as T[];
 		} catch (error) {
@@ -67,7 +67,7 @@ export class DatabaseConnection {
 			logger.debug(`Executing query (first): ${sql.substring(0, 100)}...`, { paramCount: params.length });
 			const statement = this.db.prepare(sql);
 			const result = await statement.bind(...params).first();
-			
+
 			logger.debug('Query (first) execution successful', { hasResult: !!result });
 			return result as T | null;
 		} catch (error) {
@@ -82,24 +82,24 @@ export class DatabaseConnection {
 	async executeBatch(statements: { sql: string; params: any[] }[]): Promise<D1Result[]> {
 		try {
 			logger.debug(`Executing batch of ${statements.length} statements`);
-			
-			const preparedStatements = statements.map(({ sql, params }) => 
+
+			const preparedStatements = statements.map(({ sql, params }) =>
 				this.db.prepare(sql).bind(...params)
 			);
-			
+
 			const results = await this.db.batch(preparedStatements);
-			
+
 			// Check if any statement failed
 			const failedResults = results.filter(result => !result.success);
 			if (failedResults.length > 0) {
 				throw new Error(`Batch execution failed: ${failedResults.map(r => r.error).join(', ')}`);
 			}
-			
-			logger.debug('Batch execution successful', { 
+
+			logger.debug('Batch execution successful', {
 				statementCount: statements.length,
 				totalChanges: results.reduce((sum, r) => sum + (r.meta?.changes || 0), 0)
 			});
-			
+
 			return results;
 		} catch (error) {
 			logger.error('Database batch execution error', { statementCount: statements.length, error });
@@ -131,7 +131,7 @@ export class DatabaseConnection {
 			const tables = await this.executeQuery(
 				"SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
 			);
-			
+
 			logger.debug('Database info retrieved', { tableCount: tables.length });
 			return {
 				tables: tables.map(t => t.name),

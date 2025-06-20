@@ -57,7 +57,7 @@
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
 	 */
-	"vars": { 
+	"vars": {
 		"DEFAULT_TRACK_ID": "ptrk_crossfit_dotcom",
 		"TEAM_ID": "team_cokkpu1klwo0ulfhl1iwzpvn",
 		"USER_ID": "usr_cynhnsszya9jayxu0fsft5jg"

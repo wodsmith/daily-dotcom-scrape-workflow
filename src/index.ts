@@ -103,7 +103,6 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 				if (workoutObject) {
 					dbResults = await step.do("database-operations", async () => {
 						const dbService = new DatabaseService(this.env.DB);
-						
 						// Configuration from environment variables
 						const defaultTrackId = this.env.DEFAULT_TRACK_ID || 'ptrk_crossfit_dotcom';
 						const teamId = this.env.TEAM_ID || 'team_cokkpu1klwo0ulfhl1iwzpvn';
@@ -130,7 +129,7 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 
 						// Get next day number for the track
 						const dayNumber = await dbService.getNextDayNumberForTrack(defaultTrackId);
-						
+
 						// Add workout to track
 						const trackWorkoutId = await dbService.addWorkoutToTrack(
 							workoutId,

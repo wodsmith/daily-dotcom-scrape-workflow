@@ -7,7 +7,12 @@
 		"trigger:workflow": "./scripts/trigger-workflow.ts",
 		"build": "npx tsc --noEmit",
 		"test": "echo 'No test framework configured - using TypeScript compilation for validation'",
-		"test:config": "npx tsc --noEmit && echo 'Configuration validation passed'"
+		"test:config": "npx tsc --noEmit && echo 'Configuration validation passed'",
+		"db:local": "wrangler d1 execute wodsmith-db --local",
+		"db:remote": "wrangler d1 execute wodsmith-db --remote",
+		"db:setup": "wrangler d1 execute wodsmith-db --local --file ./migrations/0001_initial_schema.sql && wrangler d1 execute wodsmith-db --local --file ./migrations/0002_test_data.sql",
+		"db:reset": "rm -rf .wrangler/state/v3/d1 && pnpm run db:setup",
+		"db:shell": "wrangler d1 execute wodsmith-db --local --command"
 	},
 	"devDependencies": {
 		"@types/bun": "latest",
