@@ -12,6 +12,9 @@
 		"enabled": true,
 		"head_sampling_rate": 1
 	},
+	"ai": {
+		"binding": "AI"
+	},
 	"workflows": [
 		{
 			"name": "dotcom-scraper-workflow",

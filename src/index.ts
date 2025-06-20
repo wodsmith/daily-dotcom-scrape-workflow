@@ -2,11 +2,13 @@
 import { WorkflowEntrypoint, WorkflowStep, WorkflowEvent } from 'cloudflare:workers';
 import { createLogger } from './utils/logger';
 import { generateWodUrl, fetchWodPage, extractWodDetails, type WodDetails } from './scraper/dotcom-scraper';
+import { WodAnalysisAgent, type WodAnalysis, type Workout } from './ai/agent';
 
 type Env = {
 	// Add your bindings here, e.g. Workers KV, D1, Workers AI, etc.
 	DAILY_SCRAPE_WORKFLOW: Workflow;
 	WOD_QUEUE: Queue;
+	AI: Ai; // Cloudflare Workers AI binding
 };
 
 // User-defined params passed to your workflow
@@ -64,7 +66,15 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 			});
 
 			wfLogger.info("Step: Extracting WOD details.");
-			const wodDetails: WodDetails = extractWodDetails(htmlContent);
+
+			const wodDetails = await step.do("extract-wod-details", async () => {
+				return extractWodDetails(htmlContent);
+			});
+
+
+			let aiAnalysis: WodAnalysis | null = null;
+			let workoutObject: Workout | null = null;
+			let workoutSuggestions: string[] = [];
 
 			if (wodDetails.isRestDay) {
 				wfLogger.info("Step: Today is a rest day on CrossFit.com.");
@@ -72,22 +82,43 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 				wfLogger.info(
 					`Step: Successfully scraped WOD: ${wodDetails.wodText}...`,
 				);
+
+				// Initialize AI agent and analyze the WOD
+				const aiAgent = new WodAnalysisAgent(this.env.AI);
+
+				// Generate structured workout object for database insertion
+				workoutObject = await step.do("generate-workout-object", async () => {
+					return aiAgent.generateWorkoutObject(wodDetails.wodText || '');
+				});
+
+				wfLogger.info(`Step: Generated structured workout object - ${JSON.stringify(workoutObject, null, 2)}`);
+
+				// Legacy AI analysis for backward compatibility
+				// aiAnalysis = await step.do("analyze-wod-with-ai", async () => {
+				// 	return aiAgent.analyzeWod(wodDetails.wodText || '');
+				// });
+
+				// wfLogger.info(`Step: AI Analysis completed - Difficulty: ${aiAnalysis.difficulty}, Movements: ${aiAnalysis.movements.join(', ')}`);
+
+				// // Generate workout suggestions
+				// workoutSuggestions = await step.do("generate-workout-suggestions", async () => {
+				// 	return aiAgent.generateWorkoutSuggestions(wodDetails);
+				// });
+
+				wfLogger.info(`Step: Generated ${workoutSuggestions.length} workout suggestions`);
 			} else {
 				wfLogger.warn("Step: Could not scrape WOD details.");
 			}
 
-			// Push WOD details to the queue
-			await step.do("push-to-queue", async () => {
-				await this.env.WOD_QUEUE.send({
-					date: dateInput,
-					wodDetails,
-				});
-			});
+
 
 			return {
 				status: "completed",
 				date: dateInput,
 				wodDetails,
+				workoutObject, // New structured workout object for database
+				aiAnalysis,
+				workoutSuggestions,
 			};
 		} catch (err: any) {
 			wfLogger.error(`Workflow failed: ${err?.message || err}`);
@@ -157,10 +188,7 @@ export async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionC
 			params: { date: dateString },
 		});
 		// Optionally, push a message to the queue for observability
-		await env.WOD_QUEUE.send({
-			date: dateString,
-			event: 'scheduled',
-		});
+
 	} catch (err: any) {
 		console.error('Scheduled handler failed:', err);
 		if (err?.stack) {

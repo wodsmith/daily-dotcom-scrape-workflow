@@ -1,18 +1,21 @@
 #!/usr/bin/env bun
 
+// Export to make this a module
+export { };
+
 const today = new Date().toISOString().split('T')[0];
 const params = `{"date":"${today}"}`;
 
 console.log(`Triggering workflow for date: ${today}`);
 
 const proc = Bun.spawn([
-  "pnpm",
-  "wrangler",
-  "workflows",
-  "trigger",
-  "dotcom-scraper-workflow",
-  "--params",
-  params
+	"pnpm",
+	"wrangler",
+	"workflows",
+	"trigger",
+	"dotcom-scraper-workflow",
+	"--params",
+	params
 ]);
 
 const stdout = await new Response(proc.stdout).text();
