@@ -250,27 +250,27 @@ export default {
 			return Response.json({ error: err?.message || String(err) }, { status: 500 });
 		}
 	},
+
+	// Scheduled handler to trigger the workflow daily
+	async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+		try {
+			const dateString = getCurrentPacificDateString(); // Use Pacific Time
+			const logger = createLogger('Scheduled:dailyScrapeWorkflow');
+			logger.info(`Scheduled event triggered for Pacific Time date: ${dateString}`);
+			const instance = await env.DAILY_SCRAPE_WORKFLOW.create({
+				params: { date: dateString },
+			});
+			// Optionally, push a message to the queue for observability
+
+		} catch (err: any) {
+			console.error('Scheduled handler failed:', err);
+			if (err?.stack) {
+				console.error('Stack trace:', err.stack);
+			}
+			throw err;
+		}
+	},
 };
 // </docs-tag name="workflows-fetch-handler">
-
-// Export a scheduled handler to trigger the workflow daily
-export async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-	try {
-		const dateString = getCurrentPacificDateString(); // Use Pacific Time
-		const logger = createLogger('Scheduled:dailyScrapeWorkflow');
-		logger.info(`Scheduled event triggered for Pacific Time date: ${dateString}`);
-		const instance = await env.DAILY_SCRAPE_WORKFLOW.create({
-			params: { date: dateString },
-		});
-		// Optionally, push a message to the queue for observability
-
-	} catch (err: any) {
-		console.error('Scheduled handler failed:', err);
-		if (err?.stack) {
-			console.error('Stack trace:', err.stack);
-		}
-		throw err;
-	}
-}
 
 // </docs-tag name="full-workflow-example">
