@@ -95,7 +95,7 @@ For the scheme field, choose from:
 - "points" for point-based scoring
 - "pass-fail" for completion-based workouts
 
-Guidelines:
+General Guidelines:
 - Generate a descriptive slug ID based on the workout content, but include the timestamp and random components provided (${timestamp}-${randomComponent}) to ensure uniqueness
 - Extract or create a clear workout name
 - Provide detailed description including movements and structure
@@ -118,6 +118,27 @@ For scalingGuidance:
 - Include beginner and intermediate options if mentioned
 - Format as valid markdown with clear headers and bullet points
 - If no scaling section is found, provide appropriate scaling suggestions based on the movements
+
+For name:
+- When a name is not explicitly provided, generate a descriptive name based on the workout content
+- When a name is provided, use it directly without modification
+- Ensure the name is concise but descriptive enough to understand the workout type
+
+For Description:
+- Keep the flow of the workout the exact same as the original WOD text
+- Use markdown formatting for clarity
+- good example
+For time:
+50 double-unders
+50 ring dips
+50 double-unders
+50 dumbbell box step-ups
+50 double-unders
+50 burpees
+50 double-unders
+- bad example
+A chipper-style workout consisting of 50 double-unders, 50 ring dips, 50 double-unders, 50 dumbbell box step-ups, 50 double-unders, and 50 burpees. The workout is designed to be completed as fast as possible, with advanced athletes aiming to finish in under 12 minutes.
+
 
 WOD: ${wodText}
 
