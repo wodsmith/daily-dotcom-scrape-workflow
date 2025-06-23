@@ -96,48 +96,51 @@ For the scheme field, choose from:
 - "pass-fail" for completion-based workouts
 
 General Guidelines:
-- Generate a descriptive slug ID based on the workout content, but include the timestamp and random components provided (${timestamp}-${randomComponent}) to ensure uniqueness
-- Extract or create a clear workout name
-- Provide detailed description including movements and structure
-- Choose the most appropriate primary scheme
-- Set repsPerRound if it's a rounds-based workout
-- Set roundsToScore (usually 1 for most workouts, higher for multi-round scoring)
-- Include tiebreakScheme only if there's a clear tiebreaker
-- Include secondaryScheme only if there's a secondary scoring component
-- Use meters when distance is involved
+	- Generate a descriptive slug ID based on the workout content, but include the timestamp and random components provided (${timestamp}-${randomComponent}) to ensure uniqueness
+	- Extract or create a clear workout name
+	- Provide detailed description including movements and structure
+	- Choose the most appropriate primary scheme
+	- Set repsPerRound if it's a rounds-based workout
+	- Set roundsToScore (usually 1 for most workouts, higher for multi-round scoring)
+	- Include tiebreakScheme only if there's a clear tiebreaker
+	- Include secondaryScheme only if there's a secondary scoring component
+	- Use meters when distance is involved
 
-For teamSpecificNotes:
-- Look for stimulus, strategy, or coaching sections in the WOD text
-- Extract key points about workout intent, pacing, and strategy
-- Format as valid markdown with appropriate headers and lists
-- If no specific stimulus/strategy section is found, provide general guidance based on the workout structure
+For teamSpecificNotes property:
+	- Look for stimulus, strategy, or coaching sections in the WOD text
+	- Extract key points about workout intent, pacing, and strategy
+	- Format as valid markdown with appropriate headers and lists
+	- If no specific stimulus/strategy section is found, provide general guidance based on the workout structure
 
-For scalingGuidance:
-- Look for scaling, modifications, beginner, or intermediate sections in the WOD text
-- Extract all scaling options including movement modifications, load adjustments, and rep schemes
-- Include beginner and intermediate options if mentioned
-- Format as valid markdown with clear headers and bullet points
-- If no scaling section is found, provide appropriate scaling suggestions based on the movements
+For scalingGuidance property:
+	- Look for scaling, modifications, beginner, or intermediate sections in the WOD text
+	- Extract all scaling options including movement modifications, load adjustments, and rep schemes
+	- Include beginner and intermediate options if mentioned
+	- Format as valid markdown with clear headers and bullet points
+	- If no scaling section is found, provide appropriate scaling suggestions based on the movements
 
-For name:
+For name property:
 - When a name is not explicitly provided, generate a descriptive name based on the workout content
 - When a name is provided, use it directly without modification
 - Ensure the name is concise but descriptive enough to understand the workout type
+- Avoid generic names like "For time:" or "AMRAP"
 
-For Description:
-- Keep the flow of the workout the exact same as the original WOD text
-- Use markdown formatting for clarity
-- good example
-For time:
-50 double-unders
-50 ring dips
-50 double-unders
-50 dumbbell box step-ups
-50 double-unders
-50 burpees
-50 double-unders
-- bad example
-A chipper-style workout consisting of 50 double-unders, 50 ring dips, 50 double-unders, 50 dumbbell box step-ups, 50 double-unders, and 50 burpees. The workout is designed to be completed as fast as possible, with advanced athletes aiming to finish in under 12 minutes.
+For Description Property:
+	- Keep the flow of the workout the exact same as the original WOD text
+	- Use markdown formatting for clarity
+	- remove Stimulus and Strategy section from description
+	- remove Scaling section from description
+	- good example
+	For time:
+	50 double-unders
+	50 ring dips
+	50 double-unders
+	50 dumbbell box step-ups
+	50 double-unders
+	50 burpees
+	50 double-unders
+	- bad example
+	A chipper-style workout consisting of 50 double-unders, 50 ring dips, 50 double-unders, 50 dumbbell box step-ups, 50 double-unders, and 50 burpees. The workout is designed to be completed as fast as possible, with advanced athletes aiming to finish in under 12 minutes.
 
 
 WOD: ${wodText}
