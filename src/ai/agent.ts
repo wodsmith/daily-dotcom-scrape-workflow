@@ -37,6 +37,8 @@ export const WorkoutSchema = z.object({
 		'feet',
 		'points'
 	]).nullable().optional().describe('Secondary scoring scheme if applicable'),
+	teamSpecificNotes: z.string().nullable().optional().describe('Team-specific notes for stimulus and strategy'),
+	scalingGuidance: z.string().nullable().optional().describe('Scaling guidance for the day'),
 });
 
 export type Workout = z.infer<typeof WorkoutSchema>;
@@ -67,9 +69,7 @@ export class WodAnalysisAgent {
 
 		const prompt = `You are a CrossFit expert. Analyze the following workout (WOD) and provide a structured workout object.
 
-WOD: ${wodText}
-
-Please analyze this workout and provide a JSON object with the following structure:
+Please analyze the following workout and provide a JSON object with the following structure:
 {
 	"id": "unique-workout-slug-${timestamp}-${randomComponent}",
 	"name": "Clear workout name/title",
@@ -79,7 +79,9 @@ Please analyze this workout and provide a JSON object with the following structu
 	"repsPerRound": number_or_null,
 	"roundsToScore": number_default_1,
 	"tiebreakScheme": "time_or_reps_or_null",
-	"secondaryScheme": "secondary_scheme_or_null"
+	"secondaryScheme": "secondary_scheme_or_null",
+	"teamSpecificNotes": "markdown_formatted_stimulus_and_strategy",
+	"scalingGuidance": "markdown_formatted_scaling_options"
 }
 
 For the scheme field, choose from:
@@ -103,6 +105,22 @@ Guidelines:
 - Include tiebreakScheme only if there's a clear tiebreaker
 - Include secondaryScheme only if there's a secondary scoring component
 - Use meters when distance is involved
+
+For teamSpecificNotes:
+- Look for stimulus, strategy, or coaching sections in the WOD text
+- Extract key points about workout intent, pacing, and strategy
+- Format as valid markdown with appropriate headers and lists
+- If no specific stimulus/strategy section is found, provide general guidance based on the workout structure
+
+For scalingGuidance:
+- Look for scaling, modifications, beginner, or intermediate sections in the WOD text
+- Extract all scaling options including movement modifications, load adjustments, and rep schemes
+- Include beginner and intermediate options if mentioned
+- Format as valid markdown with clear headers and bullet points
+- If no scaling section is found, provide appropriate scaling suggestions based on the movements
+
+WOD: ${wodText}
+
 Only respond with valid JSON, no additional text.`;
 
 		try {
@@ -163,6 +181,8 @@ Only respond with valid JSON, no additional text.`;
 				scope: 'private',
 				scheme: 'time', // Default to time-based
 				roundsToScore: 1,
+				teamSpecificNotes: '## Stimulus & Strategy\n\nGeneral guidance: Focus on consistent pacing and proper form throughout the workout.',
+				scalingGuidance: '## Scaling Options\n\n- **Beginner**: Reduce reps and loads as needed\n- **Intermediate**: Modify movements to appropriate skill level\n- **Advanced**: Perform as prescribed',
 			};
 		}
 	}

@@ -6,16 +6,16 @@
 // Workout queries
 export const INSERT_WORKOUT = `
 	INSERT INTO workouts (
-		id, name, description, scope, scheme, repsPerRound, roundsToScore,
-		userId, sugarId, tiebreakScheme, secondaryScheme, sourceTrackId,
+		id, name, description, scope, scheme, reps_per_round, rounds_to_score,
+		user_id, sugar_id, tiebreak_scheme, secondary_scheme, source_track_id,
 		createdAt, updatedAt, updateCounter
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `;
 
 export const INSERT_WORKOUT_OR_IGNORE = `
 	INSERT OR IGNORE INTO workouts (
-		id, name, description, scope, scheme, repsPerRound, roundsToScore,
-		userId, sugarId, tiebreakScheme, secondaryScheme, sourceTrackId,
+		id, name, description, scope, scheme, reps_per_round, rounds_to_score,
+		user_id, sugar_id, tiebreak_scheme, secondary_scheme, source_track_id,
 		createdAt, updatedAt, updateCounter
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `;
@@ -30,8 +30,8 @@ export const SEARCH_WORKOUTS_BY_NAME = `
 
 export const UPDATE_WORKOUT = `
 	UPDATE workouts 
-	SET name = ?, description = ?, scope = ?, scheme = ?, repsPerRound = ?,
-		roundsToScore = ?, tiebreakScheme = ?, secondaryScheme = ?,
+	SET name = ?, description = ?, scope = ?, scheme = ?, reps_per_round = ?,
+		rounds_to_score = ?, tiebreak_scheme = ?, secondary_scheme = ?,
 		updatedAt = ?, updateCounter = updateCounter + 1
 	WHERE id = ?
 `;

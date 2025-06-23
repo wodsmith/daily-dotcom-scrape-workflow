@@ -155,8 +155,8 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 							trackWorkoutId,
 							teamId,
 							date,
-							`Daily WOD from CrossFit.com`,
-							'Scale as needed for your fitness level'
+							workoutObject!.teamSpecificNotes || `Daily WOD from CrossFit.com`,
+							workoutObject!.scalingGuidance || 'Scale as needed for your fitness level'
 						);
 						wfLogger.info(`Workout scheduled with ID: ${scheduledInstanceId}`);
 
