@@ -67,85 +67,36 @@ export class WodAnalysisAgent {
 		const timestamp = Date.now().toString(36);
 		const randomComponent = Math.random().toString(36).substring(2, 6);
 
-		const prompt = `You are a CrossFit expert. Analyze the following workout (WOD) and provide a structured workout object.
+		const prompt = `Convert this CrossFit WOD into structured JSON data. Return only valid JSON.
 
-Please analyze the following workout and provide a JSON object with the following structure:
+WOD TEXT:
+${wodText}
+
+REQUIRED JSON FORMAT:
 {
-	"id": "unique-workout-slug-${timestamp}-${randomComponent}",
-	"name": "Clear workout name/title",
-	"description": "Detailed description of the workout",
+	"id": "descriptive-slug-${timestamp}-${randomComponent}",
+	"name": "workout name or generate from content",
+	"description": "exact WOD flow in markdown (exclude stimulus/scaling sections)",
 	"scope": "private",
-	"scheme": "primary_scoring_scheme",
+	"scheme": "scoring_type",
 	"repsPerRound": number_or_null,
-	"roundsToScore": number_default_1,
-	"tiebreakScheme": "time_or_reps_or_null",
-	"secondaryScheme": "secondary_scheme_or_null",
-	"teamSpecificNotes": "markdown_formatted_stimulus_and_strategy",
-	"scalingGuidance": "markdown_formatted_scaling_options"
+	"roundsToScore": 1,
+	"tiebreakScheme": "time|reps|null",
+	"secondaryScheme": "secondary_type|null",
+	"teamSpecificNotes": "markdown stimulus/strategy guidance",
+	"scalingGuidance": "markdown scaling options"
 }
 
-For the scheme field, choose from:
-- "time" for time-based workouts (finish as fast as possible)
-- "time-with-cap" for time workouts with a time cap
-- "rounds-reps" for AMRAP (As Many Rounds As Possible)
-- "reps" for max reps in a given time
-- "emom" for Every Minute On the Minute
-- "load" for max weight/load
-- "calories", "meters", "feet" for distance/calorie based
-- "points" for point-based scoring
-- "pass-fail" for completion-based workouts
+SCHEME OPTIONS: time, time-with-cap, rounds-reps, reps, emom, load, calories, meters, feet, points, pass-fail
 
-General Guidelines:
-	- Generate a descriptive slug ID based on the workout content, but include the timestamp and random components provided (${timestamp}-${randomComponent}) to ensure uniqueness
-	- Extract or create a clear workout name
-	- Provide detailed description including movements and structure
-	- Choose the most appropriate primary scheme
-	- Set repsPerRound if it's a rounds-based workout
-	- Set roundsToScore (usually 1 for most workouts, higher for multi-round scoring)
-	- Include tiebreakScheme only if there's a clear tiebreaker
-	- Include secondaryScheme only if there's a secondary scoring component
-	- Use meters when distance is involved
+RULES:
+1. ID: Create descriptive slug + provided timestamp/random components
+2. Name: Use given name when provided OR generate based on date so "2025-06-01" becomes "CrossFit.com 20250601"
+3. Description: Copy exact WOD structure in markdown, remove stimulus/scaling sections
+4. teamSpecificNotes: Extract stimulus/strategy guidance from WOD text
+5. scalingGuidance: Extract scaling options
 
-For teamSpecificNotes property:
-	- Look for stimulus, strategy, or coaching sections in the WOD text
-	- Extract key points about workout intent, pacing, and strategy
-	- Format as valid markdown with appropriate headers and lists
-	- If no specific stimulus/strategy section is found, provide general guidance based on the workout structure
-
-For scalingGuidance property:
-	- Look for scaling, modifications, beginner, or intermediate sections in the WOD text
-	- Extract all scaling options including movement modifications, load adjustments, and rep schemes
-	- Include beginner and intermediate options if mentioned
-	- Format as valid markdown with clear headers and bullet points
-	- If no scaling section is found, provide appropriate scaling suggestions based on the movements
-
-For name property:
-- When a name is not explicitly provided, generate a descriptive name based on the workout content
-- When a name is provided, use it directly without modification
-- Ensure the name is concise but descriptive enough to understand the workout type
-- Avoid generic names like "For time:" or "AMRAP"
-
-For Description Property:
-	- Keep the flow of the workout the exact same as the original WOD text
-	- Use markdown formatting for clarity
-	- remove Stimulus and Strategy section from description
-	- remove Scaling section from description
-	- good example
-	For time:
-	50 double-unders
-	50 ring dips
-	50 double-unders
-	50 dumbbell box step-ups
-	50 double-unders
-	50 burpees
-	50 double-unders
-	- bad example
-	A chipper-style workout consisting of 50 double-unders, 50 ring dips, 50 double-unders, 50 dumbbell box step-ups, 50 double-unders, and 50 burpees. The workout is designed to be completed as fast as possible, with advanced athletes aiming to finish in under 12 minutes.
-
-
-WOD: ${wodText}
-
-Only respond with valid JSON, no additional text.`;
+REMEMBER: Return only valid JSON, no extra text.`;
 
 		try {
 			const response = await this.ai.run('@cf/meta/llama-3.1-8b-instruct', {
