@@ -168,8 +168,18 @@ REMEMBER: Return only valid JSON, no extra text.`;
 				workoutText = JSON.stringify(response);
 			}
 
+			// Clean the response text - remove markdown code blocks if present
+			let cleanedText = workoutText.trim();
+
+			// Remove markdown code block markers if present
+			if (cleanedText.startsWith('```json')) {
+				cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+			} else if (cleanedText.startsWith('```')) {
+				cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+			}
+
 			// Parse and validate the response
-			const workoutData = JSON.parse(workoutText);
+			const workoutData = JSON.parse(cleanedText);
 
 			// Validate against our schema using zod
 			const validatedWorkout = WorkoutSchema.parse(workoutData);
@@ -254,7 +264,17 @@ Only respond with valid JSON, no additional text.`;
 				analysisText = JSON.stringify(response);
 			}
 
-			const analysis = JSON.parse(analysisText) as WodAnalysis;
+			// Clean the response text - remove markdown code blocks if present
+			let cleanedAnalysisText = analysisText.trim();
+
+			// Remove markdown code block markers if present
+			if (cleanedAnalysisText.startsWith('```json')) {
+				cleanedAnalysisText = cleanedAnalysisText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+			} else if (cleanedAnalysisText.startsWith('```')) {
+				cleanedAnalysisText = cleanedAnalysisText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+			}
+
+			const analysis = JSON.parse(cleanedAnalysisText) as WodAnalysis;
 
 			logger.info('WOD analysis completed successfully');
 			return analysis;

@@ -111,62 +111,62 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 
 				// Database operations
 				if (workoutObject) {
-					dbResults = await step.do("database-operations", async () => {
-						const dbService = new DatabaseService(this.env.DB);
-						// Configuration from environment variables
-						const defaultTrackId = this.env.DEFAULT_TRACK_ID || 'ptrk_crossfit_dotcom';
-						const teamId = this.env.TEAM_ID || 'team_cokkpu1klwo0ulfhl1iwzpvn';
-						const userId = this.env.USER_ID || 'usr_cynhnsszya9jayxu0fsft5jg';
+					// dbResults = await step.do("database-operations", async () => {
+					// 	const dbService = new DatabaseService(this.env.DB);
+					// 	// Configuration from environment variables
+					// 	const defaultTrackId = this.env.DEFAULT_TRACK_ID || 'ptrk_crossfit_dotcom';
+					// 	const teamId = this.env.TEAM_ID || 'team_cokkpu1klwo0ulfhl1iwzpvn';
+					// 	const userId = this.env.USER_ID || 'usr_cynhnsszya9jayxu0fsft5jg';
 
-						// Create workout data for database insertion (workoutObject is guaranteed non-null here)
-						const workoutData = {
-							id: workoutObject!.id,
-							name: workoutObject!.name,
-							description: workoutObject!.description,
-							scope: 'public' as const,
-							scheme: workoutObject!.scheme,
-							repsPerRound: workoutObject!.repsPerRound || undefined,
-							roundsToScore: workoutObject!.roundsToScore || undefined,
-							tiebreakScheme: workoutObject!.tiebreakScheme || undefined,
-							secondaryScheme: workoutObject!.secondaryScheme || undefined,
-							userId: userId,
-							sourceTrackId: defaultTrackId
-						};
+					// 	// Create workout data for database insertion (workoutObject is guaranteed non-null here)
+					// 	const workoutData = {
+					// 		id: workoutObject!.id,
+					// 		name: workoutObject!.name,
+					// 		description: workoutObject!.description,
+					// 		scope: 'public' as const,
+					// 		scheme: workoutObject!.scheme,
+					// 		repsPerRound: workoutObject!.repsPerRound || undefined,
+					// 		roundsToScore: workoutObject!.roundsToScore || undefined,
+					// 		tiebreakScheme: workoutObject!.tiebreakScheme || undefined,
+					// 		secondaryScheme: workoutObject!.secondaryScheme || undefined,
+					// 		userId: userId,
+					// 		sourceTrackId: defaultTrackId
+					// 	};
 
-						// Insert workout with fallback for constraint violations (or find existing)
-						const workoutId = await dbService.insertWorkoutWithFallback(workoutData);
-						wfLogger.info(`Workout processed with ID: ${workoutId} (may be existing or newly created)`);
+					// 	// Insert workout with fallback for constraint violations (or find existing)
+					// 	const workoutId = await dbService.insertWorkoutWithFallback(workoutData);
+					// 	wfLogger.info(`Workout processed with ID: ${workoutId} (may be existing or newly created)`);
 
-						// Get next day number for the track
-						const dayNumber = await dbService.getNextDayNumberForTrack(defaultTrackId);
+					// 	// Get next day number for the track
+					// 	const dayNumber = await dbService.getNextDayNumberForTrack(defaultTrackId);
 
-						// Add workout to track
-						const trackWorkoutId = await dbService.addWorkoutToTrack(
-							workoutId,
-							defaultTrackId,
-							dayNumber,
-							undefined,
-							`CrossFit.com WOD for ${dateInput}`
-						);
-						wfLogger.info(`Workout added to track with ID: ${trackWorkoutId}`);
+					// 	// Add workout to track
+					// 	const trackWorkoutId = await dbService.addWorkoutToTrack(
+					// 		workoutId,
+					// 		defaultTrackId,
+					// 		dayNumber,
+					// 		undefined,
+					// 		`CrossFit.com WOD for ${dateInput}`
+					// 	);
+					// 	wfLogger.info(`Workout added to track with ID: ${trackWorkoutId}`);
 
-						// Schedule workout for today
-						const scheduledInstanceId = await dbService.scheduleWorkoutForDate(
-							trackWorkoutId,
-							teamId,
-							date,
-							workoutObject!.teamSpecificNotes || `Daily WOD from CrossFit.com`,
-							workoutObject!.scalingGuidance || 'Scale as needed for your fitness level'
-						);
-						wfLogger.info(`Workout scheduled with ID: ${scheduledInstanceId}`);
+					// 	// Schedule workout for today
+					// 	const scheduledInstanceId = await dbService.scheduleWorkoutForDate(
+					// 		trackWorkoutId,
+					// 		teamId,
+					// 		date,
+					// 		workoutObject!.teamSpecificNotes || `Daily WOD from CrossFit.com`,
+					// 		workoutObject!.scalingGuidance || 'Scale as needed for your fitness level'
+					// 	);
+					// 	wfLogger.info(`Workout scheduled with ID: ${scheduledInstanceId}`);
 
-						return {
-							workoutId,
-							trackWorkoutId,
-							scheduledInstanceId,
-							dayNumber
-						};
-					});
+					// 	return {
+					// 		workoutId,
+					// 		trackWorkoutId,
+					// 		scheduledInstanceId,
+					// 		dayNumber
+					// 	};
+					// });
 
 					wfLogger.info(`Database operations completed successfully: ${JSON.stringify(dbResults)}`);
 				}
