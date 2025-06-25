@@ -91,10 +91,56 @@ SCHEME OPTIONS: time, time-with-cap, rounds-reps, reps, emom, load, calories, me
 
 RULES:
 1. ID: Create descriptive slug + provided timestamp/random components
-2. Name: Use given name when provided OR generate based on date so "2025-06-01" becomes "CrossFit.com 20250601"
+2. Name: Use given name when provided (strip any markdown from name) OR generate based on date so "2025-06-01" becomes "CrossFit.com 20250601"
 3. Description: Copy exact WOD structure in markdown, remove stimulus/scaling sections
 4. teamSpecificNotes: Extract stimulus/strategy guidance from WOD text
 5. scalingGuidance: Extract scaling options
+
+General Guidelines:
+	- Extract or create a clear workout name
+	- Provide detailed description including movements and structure
+	- Choose the most appropriate primary scheme
+	- Set repsPerRound if it's a rounds-based workout
+	- Set roundsToScore (usually 1 for most workouts, higher for multi-round scoring)
+	- Include tiebreakScheme only if there's a clear tiebreaker
+	- Include secondaryScheme only if there's a secondary scoring component
+	- Use meters when distance is involved
+
+For teamSpecificNotes property:
+	- Look for stimulus, strategy, or coaching sections in the WOD text
+	- Extract key points about workout intent, pacing, and strategy
+	- Format as valid markdown with appropriate headers and lists
+	- If no specific stimulus/strategy section is found, provide general guidance based on the workout structure
+
+For scalingGuidance property:
+	- Look for scaling, modifications, beginner, or intermediate sections in the WOD text
+	- Extract all scaling options including movement modifications, load adjustments, and rep schemes
+	- Include beginner and intermediate options if mentioned
+	- Format as valid markdown with clear headers and bullet points
+	- If no scaling section is found, provide appropriate scaling suggestions based on the movements
+
+For name property:
+- When a name is not explicitly provided, generate a descriptive name based on the workout content
+- When a name is provided, use it directly without modification
+- Ensure the name is concise but descriptive enough to understand the workout type
+- Avoid generic names like "For time:" or "AMRAP"
+
+For Description Property:
+	- Keep the flow of the workout the exact same as the original WOD text
+	- Use markdown formatting for clarity
+	- remove Stimulus and Strategy section from description
+	- remove Scaling section from description
+	- good example
+	For time:
+	50 double-unders
+	50 ring dips
+	50 double-unders
+	50 dumbbell box step-ups
+	50 double-unders
+	50 burpees
+	50 double-unders
+	- bad example
+	A chipper-style workout consisting of 50 double-unders, 50 ring dips, 50 double-unders, 50 dumbbell box step-ups, 50 double-unders, and 50 burpees. The workout is designed to be completed as fast as possible, with advanced athletes aiming to finish in under 12 minutes.
 
 REMEMBER: Return only valid JSON, no extra text.`;
 
