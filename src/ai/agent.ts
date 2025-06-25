@@ -106,6 +106,13 @@ General Guidelines:
 	- Include secondaryScheme only if there's a secondary scoring component
 	- Use meters when distance is involved
 
+For roundsToScore property:
+	- Set to 1 for most workouts
+	- Only set higher values if the workout explicitly states multiple rounds count towards the score
+	- example: "Complete 3 rounds for time" would set roundsToScore to 1
+	- example: "Every 2:30 (20:00)" would set roundsToScore to 8
+	- example: "Complete 5 rounds for time, score each round individually" would set roundsToScore to 5
+
 For teamSpecificNotes property:
 	- Look for stimulus, strategy, or coaching sections in the WOD text
 	- Extract key points about workout intent, pacing, and strategy
