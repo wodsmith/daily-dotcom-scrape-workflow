@@ -17,6 +17,7 @@ export interface Workout extends CommonColumns {
 	scheme: 'time' | 'time-with-cap' | 'pass-fail' | 'rounds-reps' | 'reps' | 'emom' | 'load' | 'calories' | 'meters' | 'feet' | 'points';
 	repsPerRound?: number;
 	roundsToScore?: number;
+	teamId: string; // Workouts are now owned by teams (required)
 	userId?: string;
 	sugarId?: string;
 	tiebreakScheme?: 'time' | 'reps';
@@ -68,6 +69,7 @@ export interface WorkoutInput {
 	scheme: 'time' | 'time-with-cap' | 'pass-fail' | 'rounds-reps' | 'reps' | 'emom' | 'load' | 'calories' | 'meters' | 'feet' | 'points';
 	repsPerRound?: number;
 	roundsToScore?: number;
+	teamId: string; // Required field for team ownership
 	userId?: string;
 	sugarId?: string;
 	tiebreakScheme?: 'time' | 'reps';

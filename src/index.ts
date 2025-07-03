@@ -2,9 +2,9 @@
 import { WorkflowEntrypoint, WorkflowStep, WorkflowEvent } from 'cloudflare:workers';
 import { createLogger } from './utils/logger';
 import { getCurrentPacificDateString, createPacificDate } from './utils/date-utils';
+import { DatabaseService } from './services/database.service';
 import { generateWodUrl, fetchWodPage, extractWodDetails, type WodDetails } from './scraper/dotcom-scraper';
 import { WodAnalysisAgent, type WodAnalysis, type Workout } from './ai/agent';
-import { DatabaseService } from './services/database.service';
 
 type Env = {
 	// Add your bindings here, e.g. Workers KV, D1, Workers AI, etc.
@@ -129,6 +129,7 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 							roundsToScore: workoutObject!.roundsToScore || undefined,
 							tiebreakScheme: workoutObject!.tiebreakScheme || undefined,
 							secondaryScheme: workoutObject!.secondaryScheme || undefined,
+							teamId: teamId, // Required field for team ownership
 							userId: userId,
 							sourceTrackId: defaultTrackId
 						};

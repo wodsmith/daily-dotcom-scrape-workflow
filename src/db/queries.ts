@@ -7,17 +7,17 @@
 export const INSERT_WORKOUT = `
 	INSERT INTO workouts (
 		id, name, description, scope, scheme, reps_per_round, rounds_to_score,
-		user_id, sugar_id, tiebreak_scheme, secondary_scheme, source_track_id,
+		team_id, user_id, sugar_id, tiebreak_scheme, secondary_scheme, source_track_id,
 		createdAt, updatedAt, updateCounter
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `;
 
 export const INSERT_WORKOUT_OR_IGNORE = `
 	INSERT OR IGNORE INTO workouts (
 		id, name, description, scope, scheme, reps_per_round, rounds_to_score,
-		user_id, sugar_id, tiebreak_scheme, secondary_scheme, source_track_id,
+		team_id, user_id, sugar_id, tiebreak_scheme, secondary_scheme, source_track_id,
 		createdAt, updatedAt, updateCounter
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `;
 
 export const GET_WORKOUT_BY_ID = `
@@ -25,13 +25,13 @@ export const GET_WORKOUT_BY_ID = `
 `;
 
 export const SEARCH_WORKOUTS_BY_NAME = `
-	SELECT * FROM workouts WHERE name LIKE ? ORDER BY createdAt DESC LIMIT 10
+	SELECT * FROM workouts WHERE team_id = ? AND name LIKE ? ORDER BY createdAt DESC LIMIT 10
 `;
 
 export const UPDATE_WORKOUT = `
 	UPDATE workouts 
 	SET name = ?, description = ?, scope = ?, scheme = ?, reps_per_round = ?,
-		rounds_to_score = ?, tiebreak_scheme = ?, secondary_scheme = ?,
+		rounds_to_score = ?, team_id = ?, tiebreak_scheme = ?, secondary_scheme = ?,
 		updatedAt = ?, updateCounter = updateCounter + 1
 	WHERE id = ?
 `;
@@ -102,6 +102,23 @@ export const INSERT_TEAM_PROGRAMMING_TRACK = `
 	INSERT INTO team_programming_track (
 		teamId, trackId, isActive, addedAt, createdAt, updatedAt, updateCounter
 	) VALUES (?, ?, ?, ?, ?, ?, ?)
+`;
+
+// Team-specific workout queries
+export const GET_WORKOUTS_BY_TEAM = `
+	SELECT * FROM workouts WHERE team_id = ? ORDER BY createdAt DESC LIMIT ?
+`;
+
+export const SEARCH_WORKOUTS_BY_NAME_AND_TEAM = `
+	SELECT * FROM workouts WHERE team_id = ? AND name LIKE ? ORDER BY createdAt DESC LIMIT 10
+`;
+
+export const CHECK_WORKOUT_EXISTS_FOR_TEAM = `
+	SELECT COUNT(*) as count FROM workouts WHERE id = ? AND team_id = ?
+`;
+
+export const GET_WORKOUT_BY_ID_AND_TEAM = `
+	SELECT * FROM workouts WHERE id = ? AND team_id = ?
 `;
 
 // Utility queries

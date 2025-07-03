@@ -126,6 +126,7 @@ export class DatabaseService {
 				workoutData.scheme,
 				workoutData.repsPerRound || null,
 				workoutData.roundsToScore || 1,
+				workoutData.teamId, // Required team_id field
 				workoutData.userId || null,
 				workoutData.sugarId || null,
 				workoutData.tiebreakScheme || null,
@@ -519,12 +520,13 @@ export class DatabaseService {
 	 */
 	async insertWorkoutWithFallback(workoutData: WorkoutInput): Promise<string> {
 		try {
-			// First, check if a workout with the same name already exists
-			const existingWorkout = await this.findExistingWorkoutByName(workoutData.name);
+			// First, check if a workout with the same name already exists for this team
+			const existingWorkout = await this.findExistingWorkoutByName(workoutData.name, workoutData.teamId);
 
 			if (existingWorkout) {
-				logger.info('Found existing workout with same name, skipping insertion', {
+				logger.info('Found existing workout with same name for team, skipping insertion', {
 					requestedName: workoutData.name,
+					teamId: workoutData.teamId,
 					existingWorkoutId: existingWorkout.id,
 					existingWorkoutName: existingWorkout.name
 				});
@@ -565,6 +567,7 @@ export class DatabaseService {
 					workoutData.scheme,
 					workoutData.repsPerRound || null,
 					workoutData.roundsToScore || 1,
+					workoutData.teamId, // Required team_id field
 					workoutData.userId || null,
 					workoutData.sugarId || null,
 					workoutData.tiebreakScheme || null,
@@ -591,36 +594,37 @@ export class DatabaseService {
 	}
 
 	/**
-	 * Search for workouts by name (case-insensitive partial match)
+	 * Search for workouts by name within a team (case-insensitive partial match)
 	 */
-	async searchWorkoutsByName(workoutName: string): Promise<Workout[]> {
+	async searchWorkoutsByName(workoutName: string, teamId: string): Promise<Workout[]> {
 		try {
 			const searchPattern = `%${workoutName}%`;
 			const result = await this.dbConnection.executeQuery<Workout>(
 				queries.SEARCH_WORKOUTS_BY_NAME,
-				[searchPattern]
+				[teamId, searchPattern]
 			);
 
-			logger.debug('Searched workouts by name', {
+			logger.debug('Searched workouts by name for team', {
 				workoutName,
+				teamId,
 				searchPattern,
 				foundCount: result.length
 			});
 
 			return result;
 		} catch (error) {
-			logger.error('Error searching workouts by name', { workoutName, error });
+			logger.error('Error searching workouts by name for team', { workoutName, teamId, error });
 			throw error;
 		}
 	}
 
 	/**
-	 * Check if a workout with similar name already exists
+	 * Check if a workout with similar name already exists within a team
 	 * Returns the existing workout if found, null otherwise
 	 */
-	async findExistingWorkoutByName(workoutName: string): Promise<Workout | null> {
+	async findExistingWorkoutByName(workoutName: string, teamId: string): Promise<Workout | null> {
 		try {
-			const matchingWorkouts = await this.searchWorkoutsByName(workoutName);
+			const matchingWorkouts = await this.searchWorkoutsByName(workoutName, teamId);
 
 			// Look for exact match first
 			const exactMatch = matchingWorkouts.find(w =>
@@ -628,8 +632,9 @@ export class DatabaseService {
 			);
 
 			if (exactMatch) {
-				logger.info('Found exact workout name match', {
+				logger.info('Found exact workout name match for team', {
 					workoutName,
+					teamId,
 					existingWorkoutId: exactMatch.id
 				});
 				return exactMatch;
@@ -637,16 +642,62 @@ export class DatabaseService {
 
 			// If no exact match but we have similar workouts, log them for visibility
 			if (matchingWorkouts.length > 0) {
-				logger.info('Found similar workout names', {
+				logger.info('Found similar workout names for team', {
 					workoutName,
+					teamId,
 					similarWorkouts: matchingWorkouts.map(w => ({ id: w.id, name: w.name }))
 				});
 			}
 
 			return null;
 		} catch (error) {
-			logger.error('Error finding existing workout by name', { workoutName, error });
+			logger.error('Error finding existing workout by name for team', { workoutName, teamId, error });
 			return null;
+		}
+	}
+
+	/**
+	 * Get workouts for a specific team
+	 */
+	async getWorkoutsByTeam(teamId: string, limit: number = 50): Promise<Workout[]> {
+		try {
+			logger.debug('Retrieving workouts for team', { teamId, limit });
+
+			const workouts = await this.dbConnection.executeQuery<Workout>(
+				queries.GET_WORKOUTS_BY_TEAM,
+				[teamId, limit]
+			);
+
+			logger.debug('Team workouts retrieved', { teamId, count: workouts.length });
+			return workouts;
+		} catch (error) {
+			logger.error('Error retrieving workouts for team', { teamId, error });
+			throw error;
+		}
+	}
+
+	/**
+	 * Get a specific workout by ID, ensuring it belongs to the team
+	 */
+	async getWorkoutByIdAndTeam(workoutId: string, teamId: string): Promise<Workout | null> {
+		try {
+			logger.debug('Retrieving workout by ID for team', { workoutId, teamId });
+
+			const workout = await this.dbConnection.executeQueryFirst<Workout>(
+				queries.GET_WORKOUT_BY_ID_AND_TEAM,
+				[workoutId, teamId]
+			);
+
+			if (workout) {
+				logger.debug('Workout retrieved for team', { workoutId, teamId });
+			} else {
+				logger.debug('Workout not found for team', { workoutId, teamId });
+			}
+
+			return workout;
+		} catch (error) {
+			logger.error('Error retrieving workout by ID for team', { workoutId, teamId, error });
+			throw error;
 		}
 	}
 }

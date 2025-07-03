@@ -35,7 +35,8 @@ describe('DatabaseService', () => {
 				description: 'A test workout for validation',
 				scheme: 'time',
 				scope: 'public',
-				roundsToScore: 1
+				roundsToScore: 1,
+				teamId: 'team_test_123' // Required field
 			};
 
 			const workoutId = await databaseService.insertWorkout(workoutData);
@@ -49,7 +50,8 @@ describe('DatabaseService', () => {
 				id: 'custom-workout-123',
 				name: 'Custom Workout',
 				description: 'A workout with custom ID',
-				scheme: 'rounds-reps'
+				scheme: 'rounds-reps',
+				teamId: 'team_test_123'
 			};
 
 			const workoutId = await databaseService.insertWorkout(workoutData);
@@ -66,6 +68,7 @@ describe('DatabaseService', () => {
 				roundsToScore: 3,
 				tiebreakScheme: 'reps',
 				secondaryScheme: 'time',
+				teamId: 'team_test_123',
 				userId: 'user-123',
 				sourceTrackId: 'track-456'
 			};

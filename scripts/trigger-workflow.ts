@@ -36,4 +36,4 @@ const stderr = await new Response(proc.stderr).text();
 if (stdout) console.log(stdout);
 if (stderr) console.error(stderr);
 
-process.exit(proc.exitCode); 
+process.exit(proc.exitCode);
