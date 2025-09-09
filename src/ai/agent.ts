@@ -91,7 +91,7 @@ SCHEME OPTIONS: time, time-with-cap, rounds-reps, reps, emom, load, calories, me
 
 RULES:
 1. ID: Create descriptive slug + provided timestamp/random components
-2. Name: Use given name when provided (strip any markdown from name) OR generate based on date so "2025-06-01" becomes "CrossFit.com 20250601"
+2. Name: Default to "CrossFit.com" + date so "2025-06-01" becomes "CrossFit.com 20250601" unless a name is provided
 3. Description: Copy exact WOD structure in markdown, remove stimulus/scaling sections
 4. teamSpecificNotes: Extract stimulus/strategy guidance from WOD text
 5. scalingGuidance: Extract scaling options
@@ -127,7 +127,7 @@ For scalingGuidance property:
 	- If no scaling section is found, provide appropriate scaling suggestions based on the movements
 
 For name property:
-- When a name is not explicitly provided, generate a descriptive name based on the workout content
+- When a name is not explicitly provided, default to "dotcom" + date so "2025-06-01" becomes "dotcom 20250601"
 - When a name is provided, use it directly without modification
 - Ensure the name is concise but descriptive enough to understand the workout type
 - Avoid generic names like "For time:" or "AMRAP"
@@ -152,7 +152,7 @@ For Description Property:
 REMEMBER: Return only valid JSON, no extra text.`;
 
 		try {
-			const response = await this.ai.run('@cf/meta/llama-3.1-8b-instruct', {
+			const response = await this.ai.run('@cf/google/gemma-3-12b-it', {
 				messages: [
 					{
 						role: 'user',

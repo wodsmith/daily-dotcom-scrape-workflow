@@ -126,8 +126,7 @@ export class DatabaseService {
 				workoutData.scheme,
 				workoutData.repsPerRound || null,
 				workoutData.roundsToScore || 1,
-				workoutData.teamId, // Required team_id field
-				workoutData.userId || null,
+				workoutData.teamId, // team_id field (required)
 				workoutData.sugarId || null,
 				workoutData.tiebreakScheme || null,
 				workoutData.secondaryScheme || null,
@@ -395,10 +394,21 @@ export class DatabaseService {
 						}
 
 						const params = [
-							finalWorkoutId, data.name, data.description, data.scope || 'private', data.scheme,
-							data.repsPerRound || null, data.roundsToScore || 1, data.userId || null,
-							data.sugarId || null, data.tiebreakScheme || null, data.secondaryScheme || null,
-							data.sourceTrackId || null, nowTimestamp, nowTimestamp, 0
+							finalWorkoutId,
+							data.name,
+							data.description,
+							data.scope || 'private',
+							data.scheme,
+							data.repsPerRound || null,
+							data.roundsToScore || 1,
+							data.teamId, // team_id field (required)
+							data.sugarId || null,
+							data.tiebreakScheme || null,
+							data.secondaryScheme || null,
+							data.sourceTrackId || null,
+							nowTimestamp,
+							nowTimestamp,
+							0
 						];
 
 						statements.push({ sql: queries.INSERT_WORKOUT, params });
@@ -567,8 +577,7 @@ export class DatabaseService {
 					workoutData.scheme,
 					workoutData.repsPerRound || null,
 					workoutData.roundsToScore || 1,
-					workoutData.teamId, // Required team_id field
-					workoutData.userId || null,
+					workoutData.teamId, // team_id field (required)
 					workoutData.sugarId || null,
 					workoutData.tiebreakScheme || null,
 					workoutData.secondaryScheme || null,

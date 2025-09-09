@@ -15,10 +15,21 @@ const getCurrentPacificDateString = (): string => {
 	return pacificDate; // Returns YYYY-MM-DD format
 };
 
-const today = getCurrentPacificDateString();
-const params = `{"date":"${today}"}`;
+// Parse optional date argument (expects YYYY-MM-DD)
+const inputDate = Bun.argv[2];
 
-console.log(`Triggering workflow for Pacific Time date: ${today}`);
+// Determine the target date
+const targetDate = inputDate || getCurrentPacificDateString();
+
+// Validate provided date format if arg was given
+if (inputDate && !/^\d{4}-\d{2}-\d{2}$/.test(inputDate)) {
+	console.error("Invalid date format. Expected YYYY-MM-DD");
+	process.exit(1);
+}
+
+const params = `{"date":"${targetDate}"}`;
+
+console.log(`Triggering workflow for date: ${targetDate}`);
 
 const proc = Bun.spawn([
 	"pnpm",
