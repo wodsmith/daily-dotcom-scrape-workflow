@@ -1,12 +1,20 @@
 // <docs-tag name="full-workflow-example">
 import { WorkflowEntrypoint, WorkflowStep, WorkflowEvent } from 'cloudflare:workers';
 import { createLogger } from './utils/logger';
+import { getCurrentPacificDateString, createPacificDate } from './utils/date-utils';
+import { DatabaseService } from './services/database.service';
 import { generateWodUrl, fetchWodPage, extractWodDetails, type WodDetails } from './scraper/dotcom-scraper';
+import { WodAnalysisAgent, type WodAnalysis, type Workout } from './ai/agent';
 
 type Env = {
 	// Add your bindings here, e.g. Workers KV, D1, Workers AI, etc.
 	DAILY_SCRAPE_WORKFLOW: Workflow;
 	WOD_QUEUE: Queue;
+	AI: Ai; // Cloudflare Workers AI binding
+	DB: D1Database; // D1 database binding
+	DEFAULT_TRACK_ID: string;
+	TEAM_ID: string;
+	USER_ID: string;
 };
 
 // User-defined params passed to your workflow
@@ -51,8 +59,17 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 
 		const workflowId = event.instanceId;
 		const dateInput = event.payload.date;
-		const date = new Date(dateInput);
+		const date = createPacificDate(dateInput); // Use Pacific Time for scheduling
 		const wfLogger = createLogger(`Workflow:dailyScrapeWorkflow:${workflowId}`);
+
+		// Log timezone information for debugging
+		wfLogger.info(`Workflow started`, {
+			dateInput,
+			scheduledDatePacific: date.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }),
+			scheduledDateUTC: date.toISOString(),
+			currentTimePacific: new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }),
+			currentTimeUTC: new Date().toISOString()
+		});
 
 		try {
 			wfLogger.info(`Step: Generating URL for ${date.toISOString().split("T")[0]}.`);
@@ -64,7 +81,16 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 			});
 
 			wfLogger.info("Step: Extracting WOD details.");
-			const wodDetails: WodDetails = extractWodDetails(htmlContent);
+
+			const wodDetails = await step.do("extract-wod-details", async () => {
+				return extractWodDetails(htmlContent);
+			});
+
+
+			let aiAnalysis: WodAnalysis | null = null;
+			let workoutObject: Workout | null = null;
+			let workoutSuggestions: string[] = [];
+			let dbResults: any = null;
 
 			if (wodDetails.isRestDay) {
 				wfLogger.info("Step: Today is a rest day on CrossFit.com.");
@@ -72,22 +98,105 @@ export class DailyScrapeWorkflow extends WorkflowEntrypoint<Env, Params> {
 				wfLogger.info(
 					`Step: Successfully scraped WOD: ${wodDetails.wodText}...`,
 				);
+
+				// Initialize AI agent and analyze the WOD
+				const aiAgent = new WodAnalysisAgent(this.env.AI);
+
+				// Generate structured workout object for database insertion
+				workoutObject = await step.do("generate-workout-object", async () => {
+					return aiAgent.generateWorkoutObject(wodDetails.wodText || '');
+				});
+
+				wfLogger.info(`Step: Generated structured workout object - ${JSON.stringify(workoutObject, null, 2)}`);
+
+				// Database operations
+				if (workoutObject) {
+					dbResults = await step.do("database-operations", async () => {
+						const dbService = new DatabaseService(this.env.DB);
+						// Configuration from environment variables
+						const defaultTrackId = this.env.DEFAULT_TRACK_ID || 'ptrk_crossfit_dotcom';
+						const teamId = this.env.TEAM_ID || 'team_cokkpu1klwo0ulfhl1iwzpvn';
+						const userId = this.env.USER_ID || 'usr_cynhnsszya9jayxu0fsft5jg';
+
+						// Create workout data for database insertion (workoutObject is guaranteed non-null here)
+						const workoutData = {
+							id: workoutObject!.id,
+							name: workoutObject!.name,
+							description: workoutObject!.description,
+							scope: 'public' as const,
+							scheme: workoutObject!.scheme,
+							repsPerRound: workoutObject!.repsPerRound || undefined,
+							roundsToScore: workoutObject!.roundsToScore || undefined,
+							tiebreakScheme: workoutObject!.tiebreakScheme || undefined,
+							secondaryScheme: workoutObject!.secondaryScheme || undefined,
+							teamId: teamId, // Required field for team ownership
+							userId: userId,
+							sourceTrackId: defaultTrackId
+						};
+
+						// Insert workout with fallback for constraint violations (or find existing)
+						const workoutId = await dbService.insertWorkoutWithFallback(workoutData);
+						wfLogger.info(`Workout processed with ID: ${workoutId} (may be existing or newly created)`);
+
+						// Get next day number for the track
+						const dayNumber = await dbService.getNextDayNumberForTrack(defaultTrackId);
+
+						// Add workout to track
+						const trackWorkoutId = await dbService.addWorkoutToTrack(
+							workoutId,
+							defaultTrackId,
+							dayNumber,
+							undefined,
+							`CrossFit.com WOD for ${dateInput}`
+						);
+						wfLogger.info(`Workout added to track with ID: ${trackWorkoutId}`);
+
+						// Schedule workout for today
+						const scheduledInstanceId = await dbService.scheduleWorkoutForDate(
+							trackWorkoutId,
+							teamId,
+							date,
+							workoutObject!.teamSpecificNotes || `Daily WOD from CrossFit.com`,
+							workoutObject!.scalingGuidance || 'Scale as needed for your fitness level'
+						);
+						wfLogger.info(`Workout scheduled with ID: ${scheduledInstanceId}`);
+
+						return {
+							workoutId,
+							trackWorkoutId,
+							scheduledInstanceId,
+							dayNumber
+						};
+					});
+
+					wfLogger.info(`Database operations completed successfully: ${JSON.stringify(dbResults)}`);
+				}
+				// aiAnalysis = await step.do("analyze-wod-with-ai", async () => {
+				// 	return aiAgent.analyzeWod(wodDetails.wodText || '');
+				// });
+
+				// wfLogger.info(`Step: AI Analysis completed - Difficulty: ${aiAnalysis.difficulty}, Movements: ${aiAnalysis.movements.join(', ')}`);
+
+				// // Generate workout suggestions
+				// workoutSuggestions = await step.do("generate-workout-suggestions", async () => {
+				// 	return aiAgent.generateWorkoutSuggestions(wodDetails);
+				// });
+
+				wfLogger.info(`Step: Generated ${workoutSuggestions.length} workout suggestions`);
 			} else {
 				wfLogger.warn("Step: Could not scrape WOD details.");
 			}
 
-			// Push WOD details to the queue
-			await step.do("push-to-queue", async () => {
-				await this.env.WOD_QUEUE.send({
-					date: dateInput,
-					wodDetails,
-				});
-			});
+
 
 			return {
 				status: "completed",
 				date: dateInput,
 				wodDetails,
+				workoutObject, // New structured workout object for database
+				databaseResults: dbResults, // Database operation results
+				aiAnalysis,
+				workoutSuggestions,
 			};
 		} catch (err: any) {
 			wfLogger.error(`Workflow failed: ${err?.message || err}`);
@@ -126,8 +235,7 @@ export default {
 			}
 
 			// Spawn a new instance and return the ID and status
-			const today = new Date();
-			const dateString = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+			const dateString = getCurrentPacificDateString(); // Use Pacific Time
 			let instance = await env.DAILY_SCRAPE_WORKFLOW.create({
 				params: { date: dateString },
 			});
@@ -143,31 +251,27 @@ export default {
 			return Response.json({ error: err?.message || String(err) }, { status: 500 });
 		}
 	},
+
+	// Scheduled handler to trigger the workflow daily
+	async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+		try {
+			const dateString = getCurrentPacificDateString(); // Use Pacific Time
+			const logger = createLogger('Scheduled:dailyScrapeWorkflow');
+			logger.info(`Scheduled event triggered for Pacific Time date: ${dateString}`);
+			const instance = await env.DAILY_SCRAPE_WORKFLOW.create({
+				params: { date: dateString },
+			});
+			// Optionally, push a message to the queue for observability
+
+		} catch (err: any) {
+			console.error('Scheduled handler failed:', err);
+			if (err?.stack) {
+				console.error('Stack trace:', err.stack);
+			}
+			throw err;
+		}
+	},
 };
 // </docs-tag name="workflows-fetch-handler">
-
-// Export a scheduled handler to trigger the workflow daily
-export async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-	try {
-		const today = new Date();
-		const dateString = today.toISOString().split('T')[0];
-		const logger = createLogger('Scheduled:dailyScrapeWorkflow');
-		logger.info(`Scheduled event triggered for ${dateString}`);
-		const instance = await env.DAILY_SCRAPE_WORKFLOW.create({
-			params: { date: dateString },
-		});
-		// Optionally, push a message to the queue for observability
-		await env.WOD_QUEUE.send({
-			date: dateString,
-			event: 'scheduled',
-		});
-	} catch (err: any) {
-		console.error('Scheduled handler failed:', err);
-		if (err?.stack) {
-			console.error('Stack trace:', err.stack);
-		}
-		throw err;
-	}
-}
 
 // </docs-tag name="full-workflow-example">
